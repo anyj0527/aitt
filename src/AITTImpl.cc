@@ -72,13 +72,13 @@ void AITT::Impl::ThreadMain(void)
 
 void AITT::Impl::Connect(const std::string &host, int port)
 {
-    mq->Connect(host, port, DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::QoS::AT_LEAST_ONCE, true);
+    mq->Connect(host, port, DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::QoS::EXACTLY_ONCE, true);
 
     if (discoveryCallbackHandle)
         mq->Unsubscribe(discoveryCallbackHandle);
 
     discoveryCallbackHandle = mq->Subscribe(DISCOVERY_TOPIC_BASE + "+",
-          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), MQ::AT_LEAST_ONCE);
+          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), MQ::QoS::EXACTLY_ONCE);
 }
 
 void AITT::Impl::Disconnect(void)
@@ -106,7 +106,7 @@ void AITT::Impl::Disconnect(void)
         subscribed_list.clear();
     }
 
-    mq->Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::QoS::AT_LEAST_ONCE, true);
+    mq->Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::QoS::EXACTLY_ONCE, true);
     mq->Unsubscribe(discoveryCallbackHandle);
     mq->Disconnect();
     discoveryCallbackHandle = nullptr;
