@@ -114,13 +114,19 @@ static bool is_valid_ip(const char *ip)
 
 API int aitt_connect(aitt_h handle, const char *broker_ip, int port)
 {
+    return aitt_connect_full(handle, broker_ip, port, NULL, NULL);
+}
+
+API int aitt_connect_full(aitt_h handle, const char *broker_ip, int port, const char *username,
+      const char *password)
+{
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETVM_IF(is_valid_ip(broker_ip) == false, AITT_ERROR_INVALID_PARAMETER, "Invalid IP(%s)",
           broker_ip);
 
     try {
         handle->aitt = new AITT(handle->id, handle->ip, true);
-        handle->aitt->Connect(broker_ip, port);
+        handle->aitt->Connect(broker_ip, port, username ? username : "", password ? password : "");
     } catch (std::exception &e) {
         ERR("Connect(%s, %d) Fail(%s)", broker_ip, port, e.what());
         return AITT_ERROR_SYSTEM;

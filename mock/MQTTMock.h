@@ -27,6 +27,8 @@ class MQTTMock {
     MOCK_METHOD3(mosquitto_new, struct mosquitto *(const char *id, bool clean_session, void *obj));
     MOCK_METHOD3(mosquitto_int_option, int(struct mosquitto *mosq, int option, int value));
     MOCK_METHOD1(mosquitto_destroy, void(struct mosquitto *mosq));
+    MOCK_METHOD3(mosquitto_username_pw_set,
+          int(struct mosquitto *mosq, const char *username, const char *password));
     MOCK_METHOD6(mosquitto_will_set, int(struct mosquitto *mosq, const char *topic, int payloadlen,
                                            const void *payload, int qos, bool retain));
     MOCK_METHOD1(mosquitto_will_clear, int(struct mosquitto *mosq));

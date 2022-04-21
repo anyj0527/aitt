@@ -70,6 +70,7 @@ MQ::MQ(const std::string &id, bool clear_session)
 
 MQ::~MQ(void)
 {
+    INFO("Destructor");
     int ret;
     ret = mosquitto_loop_stop(handle, true);
     if (ret != MOSQ_ERR_SUCCESS)
@@ -82,22 +83,32 @@ MQ::~MQ(void)
         ERR("mosquitto_lib_cleanup() Fail(%s)", mosquitto_strerror(ret));
 }
 
-void MQ::Connect(const std::string &host, int port, const std::string &topic, const void *msg,
-      size_t szmsg, MQ::QoS qos, bool retain)
+void MQ::Connect(const std::string &host, int port, const std::string &username,
+      const std::string &password)
 {
     int ret;
 
-    if (topic.empty() == false) {
-        ret = mosquitto_will_set(handle, topic.c_str(), szmsg, msg, qos, retain);
+    if (username.empty() == false) {
+        ret = mosquitto_username_pw_set(handle, username.c_str(), password.c_str());
         if (ret != MOSQ_ERR_SUCCESS) {
-            ERR("mosquitto_will_set(%s) Fail(%s)", topic.c_str(), mosquitto_strerror(ret));
+            ERR("mosquitto_username_pw_set(%s, %s) Fail(%s)", username.c_str(), password.c_str(),
+                  mosquitto_strerror(ret));
             throw std::runtime_error(mosquitto_strerror(ret));
         }
     }
-
     ret = mosquitto_connect(handle, host.c_str(), port, keep_alive);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_connect(%s, %d) Fail(%s)", host.c_str(), port, mosquitto_strerror(ret));
+        throw std::runtime_error(mosquitto_strerror(ret));
+    }
+}
+
+void MQ::SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, MQ::QoS qos,
+      bool retain)
+{
+    int ret = mosquitto_will_set(handle, topic.c_str(), szmsg, msg, qos, retain);
+    if (ret != MOSQ_ERR_SUCCESS) {
+        ERR("mosquitto_will_set(%s) Fail(%s)", topic.c_str(), mosquitto_strerror(ret));
         throw std::runtime_error(mosquitto_strerror(ret));
     }
 }

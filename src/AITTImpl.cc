@@ -70,15 +70,17 @@ void AITT::Impl::ThreadMain(void)
     main_loop.Run();
 }
 
-void AITT::Impl::Connect(const std::string &host, int port)
+void AITT::Impl::Connect(const std::string &host, int port, const std::string &username,
+      const std::string &password)
 {
-    mq->Connect(host, port, DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::QoS::EXACTLY_ONCE, true);
+    mq->SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
+    mq->Connect(host, port, username, password);
 
     if (discoveryCallbackHandle)
         mq->Unsubscribe(discoveryCallbackHandle);
 
     discoveryCallbackHandle = mq->Subscribe(DISCOVERY_TOPIC_BASE + "+",
-          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), MQ::QoS::EXACTLY_ONCE);
+          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), MQ::EXACTLY_ONCE);
 }
 
 void AITT::Impl::Disconnect(void)
@@ -106,7 +108,7 @@ void AITT::Impl::Disconnect(void)
         subscribed_list.clear();
     }
 
-    mq->Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::QoS::EXACTLY_ONCE, true);
+    mq->Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
     mq->Unsubscribe(discoveryCallbackHandle);
     mq->Disconnect();
     discoveryCallbackHandle = nullptr;
@@ -408,7 +410,7 @@ void AITT::Impl::PublishSubscribeTable(void)
     fbb.Finish();
 
     auto buf = fbb.GetBuffer();
-    mq->Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), MQ::QoS::EXACTLY_ONCE, true);
+    mq->Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), MQ::EXACTLY_ONCE, true);
 }
 
 void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,

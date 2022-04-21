@@ -153,6 +153,24 @@ void aitt_destroy(aitt_h handle);
 int aitt_connect(aitt_h handle, const char *broker_ip, int port);
 
 /**
+ * @brief Connect to mqtt broker as aitt_connect(), but takes username and password.
+ * @since_tizen 7.0
+ * @privlevel public
+ * @param[in] handle Handle of AITT service
+ * @param[in] broker_ip IP address of the broker to connect to
+ * @param[in] port the network port to connect to. Usually 1883.
+ * @param[in] username the username to send as a string, or NULL to disable authentication
+ * @param[in] password the password to send as a string
+ * @return @c 0 on success
+ *         otherwise a negative error value
+ * @retval #AITT_ERROR_NONE  Success
+ * @retval #AITT_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #AITT_ERROR_SYSTEM System errors
+ */
+int aitt_connect_full(aitt_h handle, const char *broker_ip, int port, const char *username,
+      const char *password);
+
+/**
  * @brief Disconnect from the broker.
  * @since_tizen 7.0
  * @privlevel public

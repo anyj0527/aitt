@@ -28,7 +28,6 @@
 
 #define MQTT_LOCALHOST "127.0.0.1"
 #define MQTT_PORT 1883
-#define EMPTY_WILL ""
 
 namespace aitt {
 
@@ -47,9 +46,10 @@ class MQ {
 
     static bool CompareTopic(const std::string &left, const std::string &right);
 
-    void Connect(const std::string &host = MQTT_LOCALHOST, int port = MQTT_PORT,
-          const std::string &willtopic = EMPTY_WILL, const void *willmsg = nullptr,
-          size_t szmsg = 0, MQ::QoS qos = QoS::AT_MOST_ONCE, bool retain = false);
+    void Connect(const std::string &host, int port, const std::string &username,
+          const std::string &password);
+    void SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, MQ::QoS qos,
+          bool retain);
     void Disconnect(void);
     void Publish(const std::string &topic, const void *data, const size_t datalen,
           MQ::QoS qos = QoS::AT_MOST_ONCE, bool retain = false);

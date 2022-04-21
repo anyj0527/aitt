@@ -15,12 +15,12 @@
  */
 #pragma once
 
+#include <AittTypes.h>
+#include <MSG.h>
+
 #include <functional>
 #include <memory>
 #include <string>
-
-#include <MSG.h>
-#include <AittTypes.h>
 
 #define AITT_LOCALHOST "127.0.0.1"
 #define AITT_PORT 1883
@@ -46,7 +46,8 @@ class API AITT {
     explicit AITT(const std::string &id, const std::string &ip_addr, bool clear_session = false);
     virtual ~AITT(void);
 
-    void Connect(const std::string &host = AITT_LOCALHOST, int port = AITT_PORT);
+    void Connect(const std::string &host = AITT_LOCALHOST, int port = AITT_PORT,
+          const std::string &username = std::string(), const std::string &password = std::string());
     void Disconnect(void);
 
     void Publish(const std::string &topic, const void *data, const size_t datalen,

@@ -29,9 +29,10 @@ AITT::~AITT(void)
 {
 }
 
-void AITT::Connect(const std::string &host, int port)
+void AITT::Connect(const std::string &host, int port, const std::string &username,
+      const std::string &password)
 {
-    return pImpl->Connect(host, port);
+    return pImpl->Connect(host, port, username, password);
 }
 
 void AITT::Disconnect(void)

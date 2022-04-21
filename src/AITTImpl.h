@@ -37,7 +37,8 @@ class AITT::Impl {
     Impl(AITT *parent, const std::string &id, const std::string &ipAddr, bool clearSession);
     virtual ~Impl(void);
 
-    void Connect(const std::string &host, int port);
+    void Connect(const std::string &host, int port, const std::string &username,
+          const std::string &password);
     void Disconnect(void);
 
     void Publish(const std::string &topic, const void *data, const size_t datalen,

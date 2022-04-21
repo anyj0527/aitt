@@ -47,6 +47,11 @@ void mosquitto_destroy(struct mosquitto *mosq)
     return MQTTTest::GetMock().mosquitto_destroy(mosq);
 }
 
+int mosquitto_username_pw_set(struct mosquitto *mosq, const char *username, const char *password)
+{
+    return MQTTTest::GetMock().mosquitto_username_pw_set(mosq, username, password);
+}
+
 int mosquitto_will_set(struct mosquitto *mosq, const char *topic, int payloadlen,
       const void *payload, int qos, bool retain)
 {

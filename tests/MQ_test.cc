@@ -80,7 +80,7 @@ TEST_F(MQTTTest, Positive_Publish_Anytime)
 
     try {
         aitt::MQ mq(TEST_CLIENT_ID, true);
-        mq.Connect(TEST_HOST, TEST_PORT);
+        mq.Connect(TEST_HOST, TEST_PORT, "", "");
         mq.Publish(TEST_TOPIC, TEST_PAYLOAD, sizeof(TEST_PAYLOAD));
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
@@ -104,7 +104,7 @@ TEST_F(MQTTTest, Positive_Subscribe_Anytime)
 
     try {
         aitt::MQ mq(TEST_CLIENT_ID, true);
-        mq.Connect(TEST_HOST, TEST_PORT);
+        mq.Connect(TEST_HOST, TEST_PORT, "", "");
         mq.Subscribe(
               TEST_TOPIC,
               [](aitt::MSG *info, const std::string &topic, const void *msg, const int szmsg,
@@ -135,7 +135,7 @@ TEST_F(MQTTTest, Positive_Unsubscribe_Anytime)
 
     try {
         aitt::MQ mq(TEST_CLIENT_ID, true);
-        mq.Connect(TEST_HOST, TEST_PORT);
+        mq.Connect(TEST_HOST, TEST_PORT, "", "");
         void *handle = mq.Subscribe(
               TEST_TOPIC,
               [](aitt::MSG *info, const std::string &topic, const void *msg, const int szmsg,
@@ -179,8 +179,9 @@ TEST_F(MQTTTest, Negative_Connect_will_set_Anytime)
     EXPECT_CALL(GetMock(), mosquitto_lib_cleanup()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     try {
         aitt::MQ mq(TEST_CLIENT_ID, true);
-        mq.Connect(TEST_HOST, TEST_PORT, "lastWill", TEST_PAYLOAD, sizeof(TEST_PAYLOAD),
-              aitt::MQ::QoS::AT_MOST_ONCE, true);
+        mq.SetWillInfo("lastWill", TEST_PAYLOAD, sizeof(TEST_PAYLOAD), aitt::MQ::QoS::AT_MOST_ONCE,
+              true);
+        mq.Connect(TEST_HOST, TEST_PORT, "", "");
         FAIL() << "Connect() must be failed";
     } catch (std::exception &e) {
         ASSERT_STREQ(e.what(), mosquitto_strerror(MOSQ_ERR_NOMEM));
@@ -199,7 +200,30 @@ TEST_F(MQTTTest, Positive_Connect_Anytime)
     EXPECT_CALL(GetMock(), mosquitto_lib_cleanup()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     try {
         aitt::MQ mq(TEST_CLIENT_ID, true);
-        mq.Connect(TEST_HOST, TEST_PORT);
+        mq.Connect(TEST_HOST, TEST_PORT, "", "");
+    } catch (std::exception &e) {
+        FAIL() << "Unepxected exception: " << e.what();
+    }
+}
+
+TEST_F(MQTTTest, Positive_Connect_User_Anytime)
+{
+    std::string username = "test";
+    std::string password = "test";
+    EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
+    EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
+          .WillOnce(Return(TEST_HANDLE));
+    EXPECT_CALL(GetMock(), mosquitto_message_v5_callback_set(TEST_HANDLE, testing::_)).Times(1);
+    EXPECT_CALL(GetMock(),
+          mosquitto_username_pw_set(TEST_HANDLE, username.c_str(), password.c_str()))
+          .Times(1);
+    EXPECT_CALL(GetMock(), mosquitto_connect(TEST_HANDLE, testing::StrEq(TEST_HOST), TEST_PORT, 60))
+          .WillOnce(Return(MOSQ_ERR_SUCCESS));
+    EXPECT_CALL(GetMock(), mosquitto_destroy(TEST_HANDLE)).Times(1);
+    EXPECT_CALL(GetMock(), mosquitto_lib_cleanup()).WillOnce(Return(MOSQ_ERR_SUCCESS));
+    try {
+        aitt::MQ mq(TEST_CLIENT_ID, true);
+        mq.Connect(TEST_HOST, TEST_PORT, username, password);
     } catch (std::exception &e) {
         FAIL() << "Unepxected exception: " << e.what();
     }
