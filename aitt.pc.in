@@ -5,4 +5,4 @@ Name: @PROJECT_NAME@
 Description: Development files for the modualrized AI framework
 Version: @PROJECT_VERSION@
 Libs: -L${libdir} -l@PROJECT_NAME@
-Cflags: -I${includedir}
+Cflags: -I${includedir} @ADDITIONAL_OPT@
