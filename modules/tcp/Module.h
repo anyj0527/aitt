@@ -47,6 +47,9 @@ class Module : public TransportModule {
     void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
           void *cbdata = nullptr, AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) override;
 
+    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb, const void *data,
+          const size_t datalen, void *cbdata = nullptr,
+          AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) override;
     void *Unsubscribe(void *handle) override;
 
     // NOTE:

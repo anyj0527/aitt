@@ -41,6 +41,9 @@ class AITT::Impl {
           const std::string &password);
     void Disconnect(void);
 
+    void ConfigureTransportModule(const std::string &key, const std::string &value,
+          AittProtocol protocols);
+
     void Publish(const std::string &topic, const void *data, const size_t datalen,
           AittProtocol protocols, AITT::QoS qos, bool retain);
 
@@ -73,10 +76,17 @@ class AITT::Impl {
     void PublishSubscribeTable(void);
     void *SubscribeTCP(SubscribeInfo *, const std::string &topic, const SubscribeCallback &cb,
           void *cbdata, QoS qos);
+    void *SubscribeWebRtc(SubscribeInfo *, const std::string &topic, const SubscribeCallback &cb,
+          void *cbdata, QoS qos);
     void HandleTimeout(int timeout_ms, unsigned int &timeout_id, aitt::MainLoopHandler &sync_loop,
           bool &is_timeout);
+    void PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
+          AITT::QoS qos, bool retain);
+    void *BuildWebRtcAttribute(const std::string &id, const std::string &broker_ip, int broker_port);
 
     std::string id_;
+    std::string mqtt_broker_ip_;
+    int mqtt_broker_port_;
     std::unique_ptr<MQ> mq;
     unsigned short reply_id;
     void *discoveryCallbackHandle;

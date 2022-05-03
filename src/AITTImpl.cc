@@ -27,6 +27,8 @@
 #include "log.h"
 
 #define DISCOVERY_TOPIC_BASE std::string("/aitt/discovery/")
+#define WEBRTC_ROOM_ID_PREFIX std::string("/aitt/webrtc/room/Room.webrtc")
+#define WEBRTC_ID_POSTFIX std::string("_for_webrtc")
 #define RESPONSE_POSTFIX "_AittRe_"
 
 namespace aitt {
@@ -98,6 +100,10 @@ void AITT::Impl::Disconnect(void)
                 tcpModule->Unsubscribe(subscribe_info->second);
                 break;
             }
+            case AITT_TYPE_WEBRTC: {
+                auto webrtcModule = modules.GetInstance(AITT_TYPE_WEBRTC);
+                webrtcModule->Unsubscribe(subscribe_info->second);
+            }
             default:
                 ERR("Unknown AittProtocol(%d)", subscribe_info->first);
                 break;
@@ -112,6 +118,13 @@ void AITT::Impl::Disconnect(void)
     mq->Unsubscribe(discoveryCallbackHandle);
     mq->Disconnect();
     discoveryCallbackHandle = nullptr;
+    mqtt_broker_ip_ = std::string("");
+    mqtt_broker_port_ = -1;
+}
+
+void AITT::Impl::ConfigureTransportModule(const std::string &key, const std::string &value,
+      AittProtocol protocols)
+{
 }
 
 void AITT::Impl::Publish(const std::string &topic, const void *data, const size_t datalen,
@@ -126,6 +139,28 @@ void AITT::Impl::Publish(const std::string &topic, const void *data, const size_
         auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
         tcpModule->Publish(topic, data, datalen, qos, retain);
     }
+    if ((protocols & AITT_TYPE_WEBRTC) == AITT_TYPE_WEBRTC) {
+        PublishWebRtc(topic, data, datalen, qos, retain);
+    }
+}
+
+void AITT::Impl::PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
+      AITT::QoS qos, bool retain)
+{
+    auto webrtcModule = modules.GetInstance(AITT_TYPE_WEBRTC);
+    flexbuffers::Builder fbb;
+    fbb.Map([=, &fbb]() {
+        fbb.String("Id", id_ + WEBRTC_ID_POSTFIX);
+        fbb.String("BrokerIp", mqtt_broker_ip_);
+        fbb.Int("BrokerPort", mqtt_broker_port_);
+        fbb.String("RoomId", WEBRTC_ROOM_ID_PREFIX + topic);
+        fbb.String("SourceId",  id_ + WEBRTC_ID_POSTFIX);
+        //TODO pass user data to WEBRTC module
+        fbb.UInt("UserDataLength", datalen);
+    });
+    fbb.Finish();
+    auto buf = fbb.GetBuffer();
+    webrtcModule->Publish(topic, buf.data(), buf.size(), qos, retain);
 }
 
 AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::SubscribeCallback &cb,
@@ -142,6 +177,9 @@ AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::Subs
     case AITT_TYPE_TCP:
         subscribe_handle = SubscribeTCP(info, topic, cb, cbdata, qos);
         PublishSubscribeTable();
+        break;
+    case AITT_TYPE_WEBRTC:
+        subscribe_handle = SubscribeWebRtc(info, topic, cb, cbdata, qos);
         break;
     default:
         ERR("Unknown AittProtocol(%d)", protocol);
@@ -209,6 +247,11 @@ void *AITT::Impl::Unsubscribe(AittSubscribeID subscribe_id)
     case AITT_TYPE_TCP: {
         auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
         cbdata = tcpModule->Unsubscribe(found_info->second);
+        break;
+    }
+    case AITT_TYPE_WEBRTC: {
+        auto webrtcModule = modules.GetInstance(AITT_TYPE_MQTT);
+        cbdata = webrtcModule->Unsubscribe(found_info->second);
         break;
     }
     default:
@@ -432,4 +475,32 @@ void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,
           cbdata, qos);
 }
 
+void *AITT::Impl::SubscribeWebRtc(SubscribeInfo *handle, const std::string &topic,
+      const SubscribeCallback &cb, void *cbdata, QoS qos)
+{
+    auto webrtc_module = modules.GetInstance(AITT_TYPE_WEBRTC);
+    flexbuffers::Builder fbb;
+    fbb.Map([=, &fbb]() {
+        fbb.String("Id", id_ + WEBRTC_ID_POSTFIX);
+        fbb.String("BrokerIp", mqtt_broker_ip_);
+        fbb.String("RoomId", WEBRTC_ROOM_ID_PREFIX + topic);
+        fbb.Int("BrokerPort", mqtt_broker_port_);
+    });
+    fbb.Finish();
+    auto buf = fbb.GetBuffer();
+
+    return webrtc_module->Subscribe(
+          topic,
+          [handle, cb](const std::string &topic, const void *data, const size_t datalen,
+                void *cbdata, const std::string &correlation) -> void {
+              MSG msg;
+              msg.SetID(handle);
+              msg.SetTopic(topic);
+              msg.SetCorrelation(correlation);
+              msg.SetProtocols(AITT_TYPE_WEBRTC);
+
+              return cb(&msg, data, datalen, cbdata);
+          },
+          buf.data(), buf.size(), cbdata, qos);
+}
 }  // namespace aitt

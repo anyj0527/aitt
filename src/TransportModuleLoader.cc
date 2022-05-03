@@ -37,6 +37,8 @@ std::string TransportModuleLoader::GetModuleFilename(AittProtocol protocol)
     // It could be introduced later when we have several modules.
     if (protocol == AITT_TYPE_TCP)
         return "libaitt-transport-tcp.so";
+    if (protocol == AITT_TYPE_WEBRTC)
+        return "libaitt-transport-webrtc.so";
 
     return std::string();
 }

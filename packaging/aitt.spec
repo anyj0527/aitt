@@ -19,6 +19,13 @@ BuildRequires: pkgconfig(glib-2.0)
 BuildRequires: pkgconfig(libmosquitto)
 #BuildRequires: pkgconfig(libsrtp2)
 BuildRequires: pkgconfig(gmock_main)
+BuildRequires: pkgconfig(capi-media-tool)
+BuildRequires: pkgconfig(capi-media-sound-manager)
+BuildRequires: pkgconfig(bundle)
+BuildRequires: pkgconfig(capi-media-webrtc)
+BuildRequires: pkgconfig(capi-media-camera)
+BuildRequires: pkgconfig(json-glib-1.0)
+BuildRequires: pkgconfig(libsoup-2.4)
 %if 0%{gcov}
 BuildRequires: lcov
 %endif

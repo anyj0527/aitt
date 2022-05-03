@@ -190,6 +190,12 @@ void *Module::Subscribe(const std::string &topic, const TransportModule::Subscri
     return reinterpret_cast<void *>(handle);
 }
 
+void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb, const void *data,
+      const size_t datalen, void *cbdata, AITT::QoS qos)
+{
+    return nullptr;
+}
+
 void *Module::Unsubscribe(void *handlePtr)
 {
     int handle = static_cast<int>(reinterpret_cast<intptr_t>(handlePtr));

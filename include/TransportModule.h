@@ -42,6 +42,9 @@ class TransportModule {
 
     virtual void *Subscribe(const std::string &topic, const SubscribeCallback &cb,
           void *cbdata = nullptr, AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) = 0;
+    virtual void *Subscribe(const std::string &topic, const SubscribeCallback &cb, const void *data,
+          const size_t datalen, void *cbdata = nullptr,
+          AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) = 0;
 
     virtual void *Unsubscribe(void *handle) = 0;
 
