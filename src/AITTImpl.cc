@@ -74,6 +74,9 @@ void AITT::Impl::Connect(const std::string &host, int port, const std::string &u
     mq.SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
     mq.Connect(host, port, username, password);
 
+    mqtt_broker_ip_ = host;
+    mqtt_broker_port_ = port;
+
     if (discoveryCallbackHandle)
         mq.Unsubscribe(discoveryCallbackHandle);
 
