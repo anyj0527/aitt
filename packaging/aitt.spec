@@ -25,7 +25,6 @@ BuildRequires: pkgconfig(bundle)
 BuildRequires: pkgconfig(capi-media-webrtc)
 BuildRequires: pkgconfig(capi-media-camera)
 BuildRequires: pkgconfig(json-glib-1.0)
-BuildRequires: pkgconfig(libsoup-2.4)
 %if 0%{gcov}
 BuildRequires: lcov
 %endif
@@ -60,6 +59,7 @@ cp %{SOURCE1001} .
     -DLOG_STDOUT:BOOL=%{stdoutlog} \
     -DPLATFORM="tizen" \
     -DVERSIONING:BOOL=OFF \
+    -DWITH_WEBRTC:BOOL=ON \
     -DCMAKE_INSTALL_PREFIX:PATH=%{_prefix} \
     -DCMAKE_VERBOSE_MAKEFILE=OFF \
     -DBUILD_TESTING:BOOL=%{test} \

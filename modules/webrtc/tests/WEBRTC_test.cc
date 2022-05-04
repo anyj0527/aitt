@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+#include <glib.h>
+#include <gtest/gtest.h>
+
 #include <chrono>
 #include <set>
 #include <thread>
-
-#include <glib.h>
-#include <gtest/gtest.h>
 
 #include "Config.h"
 #include "MqttServer.h"
@@ -293,7 +293,7 @@ static void onSinkMessage(const std::string &msg, MqttServer &server, GMainLoop 
     }
 }
 
-TEST_F(MqttServerTest, Positive_src_sink_Anytime)
+TEST_F(MqttServerTest, Positive_src_sink)
 {
     try {
         MqttServer src_server(webrtc_src_config_);
@@ -325,7 +325,7 @@ TEST_F(MqttServerTest, Positive_src_sink_Anytime)
     }
 }
 
-TEST_F(MqttServerTest, Positive_sink_src_Anytime)
+TEST_F(MqttServerTest, Positive_sink_src)
 {
     try {
         MqttServer sink_server(webrtc_first_sink_config_);
