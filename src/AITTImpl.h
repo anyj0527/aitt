@@ -82,12 +82,11 @@ class AITT::Impl {
           bool &is_timeout);
     void PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
           AITT::QoS qos, bool retain);
-    void *BuildWebRtcAttribute(const std::string &id, const std::string &broker_ip, int broker_port);
 
     std::string id_;
     std::string mqtt_broker_ip_;
     int mqtt_broker_port_;
-    std::unique_ptr<MQ> mq;
+    MQ mq;
     unsigned short reply_id;
     void *discoveryCallbackHandle;
     TransportModuleLoader modules;
