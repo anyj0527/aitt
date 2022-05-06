@@ -20,14 +20,16 @@
 
 class Config {
   public:
-    Config() = default;
+    Config() : disable_ssl_(false), broker_port_(0), user_data_length_(0) {};
     Config(const std::string &id, const std::string &broker_ip, int broker_port,
           const std::string &room_id, const std::string &source_id = std::string(""))
           : local_id_(id),
             room_id_(room_id),
             source_id_(source_id),
+            disable_ssl_(false),
             broker_ip_(broker_ip),
-            broker_port_(broker_port){};
+            broker_port_(broker_port),
+            user_data_length_(0){};
     std::string GetLocalId(void) const { return local_id_; };
     void SetLocalId(const std::string &local_id) { local_id_ = local_id; };
     std::string GetRoomId(void) const { return room_id_; };
