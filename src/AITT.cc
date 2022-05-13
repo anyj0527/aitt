@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <sys/random.h>
+
 #include <memory>
 
 #include "AITTImpl.h"
@@ -21,8 +23,31 @@
 namespace aitt {
 
 AITT::AITT(const std::string &id, const std::string &ip_addr, bool clear_session)
-      : pImpl(std::make_unique<AITT::Impl>(this, id, ip_addr, clear_session))
 {
+    std::string valid_id = id;
+    std::string valid_ip = ip_addr;
+
+    if (id.empty()) {
+        const char character_set[] =
+              "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+        char random_idx[16];
+        int rc = getrandom(random_idx, sizeof(random_idx), 0);
+        if (rc != sizeof(random_idx)) {
+            INFO("getrandom() = %d", rc);
+        }
+
+        char name[16];
+        for (size_t i = 0; i < sizeof(name); i++) {
+            name[i] = character_set[random_idx[i] % (sizeof(character_set))];
+        }
+        valid_id = "aitt-" + std::string(name, sizeof(name) - 1);
+        DBG("Generated name = %s", valid_id.c_str());
+    }
+
+    if (ip_addr.empty())
+        valid_ip = "127.0.0.1";
+
+    pImpl = std::make_unique<AITT::Impl>(this, valid_id, valid_ip, clear_session);
 }
 
 AITT::~AITT(void)

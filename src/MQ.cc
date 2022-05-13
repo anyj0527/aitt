@@ -42,7 +42,7 @@ MQ::MQ(const std::string &id, bool clear_session)
 
         handle = mosquitto_new(id.c_str(), clear_session, this);
         if (handle == nullptr) {
-            ERR("mosquitto_new() Fail");
+            ERR("mosquitto_new(%s, %d) Fail", id.c_str(), clear_session);
             break;
         }
 

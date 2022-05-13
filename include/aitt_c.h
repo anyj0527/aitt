@@ -80,21 +80,22 @@ typedef void (
 /**
  * @brief Create a new AITT service instance.
  * @detail If id is NULL or empty string, id will be generated automatically.
+ *         If my_ip is NULL or empty string, my_ip will be set as 127.0.0.1.
  * @since_tizen 7.0
  * @privlevel public
  * @param[in] id Unique identifier in local network
+ * @param[in] my_ip Own device ip address for connecting by others
  * @return @c handle of AITT service
  *         otherwise NULL value on failure
  * @see aitt_destroy()
  */
-aitt_h aitt_new(const char *id);
+aitt_h aitt_new(const char *id, const char *my_ip);
 
 /**
  * @brief Enumeration for option.
  * @since_tizen 7.0
  */
 typedef enum {
-    AITT_OPT_MY_IP,   /**< Own ip address  */
     AITT_OPT_UNKNOWN, /**< Unknown */
 } aitt_option_e;
 

@@ -26,17 +26,27 @@ using namespace aitt;
 struct aitt_handle {
     aitt_handle() : aitt(nullptr) {}
     AITT *aitt;
-    std::string id;
-    std::string ip;
+    bool connected;
 };
 
-API aitt_h aitt_new(const char *id)
+API aitt_h aitt_new(const char *id, const char *my_ip)
 {
     aitt_h handle = nullptr;
     try {
-        handle = new aitt_handle();
+        std::string valid_id;
+        std::string valid_ip;
+
         if (id)
-            handle->id = id;
+            valid_id = id;
+
+        if (my_ip)
+            valid_ip = my_ip;
+
+        DBG("id(%s), ip(%s)", valid_id.c_str(), valid_ip.c_str());
+
+        handle = new aitt_handle();
+        handle->aitt = new AITT(valid_id, valid_ip, true);
+        handle->connected = false;
     } catch (std::exception &e) {
         ERR("new() Fail(%s)", e.what());
         return nullptr;
@@ -50,12 +60,9 @@ API int aitt_set_option(aitt_h handle, aitt_option_e option, const char *value)
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
 
     switch (option) {
-    case AITT_OPT_MY_IP:
+    case AITT_OPT_UNKNOWN:
         try {
-            if (value)
-                handle->ip = value;
-            else
-                handle->ip.clear();
+            // something to do
         } catch (std::exception &e) {
             ERR("string() Fail(%s)", e.what());
             return AITT_ERROR_SYSTEM;
@@ -74,11 +81,8 @@ API const char *aitt_get_option(aitt_h handle, aitt_option_e option)
     RETV_IF(handle == nullptr, nullptr);
 
     switch (option) {
-    case AITT_OPT_MY_IP:
-        if (handle->ip.empty())
-            return nullptr;
-        else
-            return handle->ip.c_str();
+    case AITT_OPT_UNKNOWN:
+        return "Unknown";
     default:
         ERR("Unknown option(%d)", option);
     }
@@ -125,12 +129,14 @@ API int aitt_connect_full(aitt_h handle, const char *broker_ip, int port, const 
           broker_ip);
 
     try {
-        handle->aitt = new AITT(handle->id, handle->ip, true);
-        handle->aitt->Connect(broker_ip, port, username ? username : "", password ? password : "");
+        handle->aitt->Connect(broker_ip, port, username ? username : std::string(),
+              password ? password : std::string());
     } catch (std::exception &e) {
         ERR("Connect(%s, %d) Fail(%s)", broker_ip, port, e.what());
         return AITT_ERROR_SYSTEM;
     }
+
+    handle->connected = true;
     return AITT_ERROR_NONE;
 }
 
@@ -138,6 +144,7 @@ API int aitt_disconnect(aitt_h handle)
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);
+    RETV_IF(handle->connected == false, AITT_ERROR_NOT_READY);
 
     try {
         handle->aitt->Disconnect();
@@ -158,6 +165,7 @@ API int aitt_publish_full(aitt_h handle, const char *topic, const void *msg, con
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);
+    RETV_IF(handle->connected == false, AITT_ERROR_NOT_READY);
     RETV_IF(topic == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(msg == nullptr, AITT_ERROR_INVALID_PARAMETER);
 
@@ -177,6 +185,7 @@ API int aitt_publish_with_reply(aitt_h handle, const char *topic, const void *ms
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);
+    RETV_IF(handle->connected == false, AITT_ERROR_NOT_READY);
     RETV_IF(topic == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(msg == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(cb == nullptr, AITT_ERROR_INVALID_PARAMETER);
@@ -217,6 +226,7 @@ API int aitt_subscribe_full(aitt_h handle, const char *topic, aitt_sub_fn cb, vo
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);
+    RETV_IF(handle->connected == false, AITT_ERROR_NOT_READY);
     RETV_IF(topic == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(cb == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(sub_handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
@@ -236,6 +246,7 @@ API int aitt_unsubscribe(aitt_h handle, aitt_sub_h sub_handle)
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);
+    RETV_IF(handle->connected == false, AITT_ERROR_NOT_READY);
     RETV_IF(sub_handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
 
     try {

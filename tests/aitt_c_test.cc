@@ -18,34 +18,38 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 
+#include "log.h"
+
 #define LOCAL_IP "127.0.0.1"
+#define TEST_C_TOPIC "test/topic_c"
+#define TEST_C_MSG "test123456789"
 
 TEST(AITT_C_INTERFACE, new_P_Anytime)
 {
-    aitt_h handle = aitt_new("test1");
+    aitt_h handle = aitt_new("test1", LOCAL_IP);
     EXPECT_TRUE(handle != nullptr);
-
     aitt_destroy(handle);
 
-    handle = aitt_new(nullptr);
+    handle = aitt_new(nullptr, nullptr);
     EXPECT_TRUE(handle != nullptr);
-
     aitt_destroy(handle);
 
-    handle = aitt_new("");
+    handle = aitt_new("", "");
     EXPECT_TRUE(handle != nullptr);
     aitt_destroy(handle);
 }
 
 TEST(AITT_C_INTERFACE, destroy_P_Anytime)
 {
-    aitt_h handle = aitt_new("test2");
+    aitt_h handle = aitt_new("test2", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     aitt_destroy(handle);
     aitt_destroy(nullptr);
 }
 
+// TODO:: Not yet Support
+/*
 TEST(AITT_C_INTERFACE, option_P_Anytime)
 {
     aitt_h handle = aitt_new("test3");
@@ -75,10 +79,11 @@ TEST(AITT_C_INTERFACE, option_N_Anytime)
 
     aitt_destroy(handle);
 }
+*/
 
 TEST(AITT_C_INTERFACE, connect_disconnect_P_Anytime)
 {
-    aitt_h handle = aitt_new("test5");
+    aitt_h handle = aitt_new("test5", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     int ret = aitt_connect(handle, LOCAL_IP, 1883);
@@ -92,7 +97,7 @@ TEST(AITT_C_INTERFACE, connect_disconnect_P_Anytime)
 
 TEST(AITT_C_INTERFACE, connect_N_Anytime)
 {
-    aitt_h handle = aitt_new("test6");
+    aitt_h handle = aitt_new("test6", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     aitt_h invalid_handle = nullptr;
@@ -119,20 +124,18 @@ TEST(AITT_C_INTERFACE, disconnect_N_Anytime)
     int ret = aitt_disconnect(nullptr);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    aitt_h handle = aitt_new("test7");
+    aitt_h handle = aitt_new("test7", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     ret = aitt_disconnect(handle);
-    EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
+    EXPECT_EQ(ret, AITT_ERROR_NOT_READY);
 
     aitt_destroy(handle);
 }
 
-#define test_msg "test123456789"
-#define test_topic "test/topic_1"
 TEST(AITT_C_INTERFACE, pub_sub_P_Anytime)
 {
-    aitt_h handle = aitt_new("test8");
+    aitt_h handle = aitt_new("test8", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     int ret = aitt_connect(handle, LOCAL_IP, 1883);
@@ -141,19 +144,19 @@ TEST(AITT_C_INTERFACE, pub_sub_P_Anytime)
     GMainLoop *loop = g_main_loop_new(nullptr, FALSE);
     aitt_sub_h sub_handle = nullptr;
     ret = aitt_subscribe(
-          handle, test_topic,
+          handle, TEST_C_TOPIC,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {
               GMainLoop *loop = static_cast<GMainLoop *>(user_data);
               std::string received_data((const char *)msg, msg_len);
-              EXPECT_STREQ(received_data.c_str(), test_msg);
-              EXPECT_STREQ(aitt_msg_get_topic(msg_handle), test_topic);
+              EXPECT_STREQ(received_data.c_str(), TEST_C_MSG);
+              EXPECT_STREQ(aitt_msg_get_topic(msg_handle), TEST_C_TOPIC);
               g_main_loop_quit(loop);
           },
           loop, &sub_handle);
     ASSERT_EQ(ret, AITT_ERROR_NONE);
     EXPECT_TRUE(sub_handle != nullptr);
 
-    ret = aitt_publish(handle, test_topic, test_msg, strlen(test_msg));
+    ret = aitt_publish(handle, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG));
     ASSERT_EQ(ret, AITT_ERROR_NONE);
 
     g_main_loop_run(loop);
@@ -167,30 +170,34 @@ TEST(AITT_C_INTERFACE, pub_sub_P_Anytime)
 
 TEST(AITT_C_INTERFACE, pub_N_Anytime)
 {
-    aitt_h handle = aitt_new("test9");
+    aitt_h handle = aitt_new("test9", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     int ret = aitt_connect(handle, nullptr, 1883);
     EXPECT_NE(ret, AITT_ERROR_NONE);
 
-    ret = aitt_publish(handle, test_topic, test_msg, strlen(test_msg));
+    ret = aitt_publish(handle, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG));
+    EXPECT_EQ(ret, AITT_ERROR_NOT_READY);
+
+    ret = aitt_publish(nullptr, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG));
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    ret = aitt_publish(nullptr, test_topic, test_msg, strlen(test_msg));
+    ret = aitt_connect(handle, LOCAL_IP, 1883);
+    ASSERT_EQ(ret, AITT_ERROR_NONE);
+
+    ret = aitt_publish(handle, nullptr, TEST_C_MSG, strlen(TEST_C_MSG));
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    ret = aitt_publish(handle, nullptr, test_msg, strlen(test_msg));
+    ret = aitt_publish(handle, TEST_C_TOPIC, nullptr, strlen(TEST_C_MSG));
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    ret = aitt_publish(handle, test_topic, nullptr, strlen(test_msg));
-    EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
-
+    aitt_disconnect(handle);
     aitt_destroy(handle);
 }
 
 TEST(AITT_C_INTERFACE, sub_N_Anytime)
 {
-    aitt_h handle = aitt_new("test10");
+    aitt_h handle = aitt_new("test10", LOCAL_IP);
     aitt_sub_h sub_handle = nullptr;
     ASSERT_NE(handle, nullptr);
 
@@ -198,22 +205,26 @@ TEST(AITT_C_INTERFACE, sub_N_Anytime)
     EXPECT_NE(ret, AITT_ERROR_NONE);
 
     ret = aitt_subscribe(
-          handle, test_topic, [](aitt_msg_h, const void *, size_t, void *) {}, nullptr,
+          handle, TEST_C_TOPIC, [](aitt_msg_h, const void *, size_t, void *) {}, nullptr,
+          &sub_handle);
+    EXPECT_EQ(ret, AITT_ERROR_NOT_READY);
+
+    ret = aitt_subscribe(
+          nullptr, TEST_C_TOPIC, [](aitt_msg_h, const void *, size_t, void *) {}, nullptr,
           &sub_handle);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    ret = aitt_subscribe(
-          nullptr, test_topic, [](aitt_msg_h, const void *, size_t, void *) {}, nullptr,
-          &sub_handle);
-    EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
+    ret = aitt_connect(handle, LOCAL_IP, 1883);
+    ASSERT_EQ(ret, AITT_ERROR_NONE);
 
     ret = aitt_subscribe(
           handle, nullptr, [](aitt_msg_h, const void *, size_t, void *) {}, nullptr, &sub_handle);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    ret = aitt_subscribe(handle, test_topic, nullptr, nullptr, &sub_handle);
+    ret = aitt_subscribe(handle, TEST_C_TOPIC, nullptr, nullptr, &sub_handle);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
+    aitt_disconnect(handle);
     aitt_destroy(handle);
 }
 
@@ -222,7 +233,7 @@ TEST(AITT_C_INTERFACE, sub_N_Anytime)
 
 TEST(AITT_C_INTERFACE, pub_with_reply_send_reply_P_Anytime)
 {
-    aitt_h handle = aitt_new("test11");
+    aitt_h handle = aitt_new("test11", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     int ret = aitt_connect(handle, LOCAL_IP, 1883);
@@ -231,19 +242,19 @@ TEST(AITT_C_INTERFACE, pub_with_reply_send_reply_P_Anytime)
     GMainLoop *loop = g_main_loop_new(nullptr, FALSE);
     aitt_sub_h sub_handle = nullptr;
     ret = aitt_subscribe(
-          handle, test_topic,
+          handle, TEST_C_TOPIC,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {
               aitt_h handle = static_cast<aitt_h>(user_data);
               std::string received_data((const char *)msg, msg_len);
-              EXPECT_STREQ(received_data.c_str(), test_msg);
-              EXPECT_STREQ(aitt_msg_get_topic(msg_handle), test_topic);
+              EXPECT_STREQ(received_data.c_str(), TEST_C_MSG);
+              EXPECT_STREQ(aitt_msg_get_topic(msg_handle), TEST_C_TOPIC);
               aitt_send_reply(handle, msg_handle, reply_msg, sizeof(reply_msg), true);
           },
           handle, &sub_handle);
     ASSERT_EQ(ret, AITT_ERROR_NONE);
 
     ret = aitt_publish_with_reply(
-          handle, test_topic, test_msg, strlen(test_msg), AITT_TYPE_MQTT, 0, test_correlation,
+          handle, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG), AITT_TYPE_MQTT, 0, test_correlation,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {
               GMainLoop *loop = static_cast<GMainLoop *>(user_data);
               std::string received_data((const char *)msg, msg_len);
@@ -263,29 +274,30 @@ TEST(AITT_C_INTERFACE, pub_with_reply_send_reply_P_Anytime)
 
 TEST(AITT_C_INTERFACE, pub_with_reply_N_Anytime)
 {
-    aitt_h handle = aitt_new("test12");
+    aitt_h handle = aitt_new("test12", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     int ret = aitt_connect(handle, LOCAL_IP, 1883);
     ASSERT_EQ(ret, AITT_ERROR_NONE);
 
     ret = aitt_publish_with_reply(
-          nullptr, test_topic, test_msg, strlen(test_msg), AITT_TYPE_MQTT, 0, test_correlation,
+          nullptr, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG), AITT_TYPE_MQTT, 0,
+          test_correlation,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {}, nullptr);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
     ret = aitt_publish_with_reply(
-          handle, nullptr, test_msg, strlen(test_msg), AITT_TYPE_MQTT, 0, test_correlation,
+          handle, nullptr, TEST_C_MSG, strlen(TEST_C_MSG), AITT_TYPE_MQTT, 0, test_correlation,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {}, nullptr);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
     ret = aitt_publish_with_reply(
-          handle, test_topic, nullptr, 0, AITT_TYPE_MQTT, 0, test_correlation,
+          handle, TEST_C_TOPIC, nullptr, 0, AITT_TYPE_MQTT, 0, test_correlation,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {}, nullptr);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
-    ret = aitt_publish_with_reply(handle, test_topic, test_msg, strlen(test_msg), AITT_TYPE_MQTT, 0,
-          test_correlation, nullptr, nullptr);
+    ret = aitt_publish_with_reply(handle, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG),
+          AITT_TYPE_MQTT, 0, test_correlation, nullptr, nullptr);
     EXPECT_EQ(ret, AITT_ERROR_INVALID_PARAMETER);
 
     aitt_destroy(handle);
@@ -293,7 +305,7 @@ TEST(AITT_C_INTERFACE, pub_with_reply_N_Anytime)
 
 TEST(AITT_C_INTERFACE, sub_unsub_P_Anytime)
 {
-    aitt_h handle = aitt_new("test13");
+    aitt_h handle = aitt_new("test13", LOCAL_IP);
     ASSERT_NE(handle, nullptr);
 
     int ret = aitt_connect(handle, LOCAL_IP, 1883);
@@ -303,7 +315,7 @@ TEST(AITT_C_INTERFACE, sub_unsub_P_Anytime)
     GMainLoop *loop = g_main_loop_new(nullptr, FALSE);
     static aitt_sub_h sub_handle = nullptr;
     ret = aitt_subscribe(
-          handle, test_topic,
+          handle, TEST_C_TOPIC,
           [](aitt_msg_h msg_handle, const void *msg, size_t msg_len, void *user_data) {
               sub_call_count++;
           },
@@ -311,7 +323,7 @@ TEST(AITT_C_INTERFACE, sub_unsub_P_Anytime)
     ASSERT_EQ(ret, AITT_ERROR_NONE);
     EXPECT_TRUE(sub_handle != nullptr);
 
-    ret = aitt_publish(handle, test_topic, test_msg, strlen(test_msg));
+    ret = aitt_publish(handle, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG));
     ASSERT_EQ(ret, AITT_ERROR_NONE);
 
     g_timeout_add(
@@ -322,7 +334,7 @@ TEST(AITT_C_INTERFACE, sub_unsub_P_Anytime)
               EXPECT_EQ(ret, AITT_ERROR_NONE);
               sub_handle = nullptr;
 
-              ret = aitt_publish(handle, test_topic, test_msg, strlen(test_msg));
+              ret = aitt_publish(handle, TEST_C_TOPIC, TEST_C_MSG, strlen(TEST_C_MSG));
               EXPECT_EQ(ret, AITT_ERROR_NONE);
               return FALSE;
           },

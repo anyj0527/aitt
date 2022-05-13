@@ -51,4 +51,5 @@ enum AittError {
     AITT_ERROR_NOT_SUPPORTED = TIZEN_ERROR_NOT_SUPPORTED,         /**< Not supported */
     AITT_ERROR_UNKNOWN = TIZEN_ERROR_AITT | 0x01,                 /**< Unknown Error */
     AITT_ERROR_SYSTEM = TIZEN_ERROR_AITT | 0x02,                  /**< System errors */
+    AITT_ERROR_NOT_READY = TIZEN_ERROR_AITT | 0x03,               /**< System errors */
 };

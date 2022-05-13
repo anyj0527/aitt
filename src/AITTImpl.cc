@@ -16,7 +16,6 @@
 #include "AITTImpl.h"
 
 #include <flatbuffers/flexbuffers.h>
-#include <sys/random.h>
 
 #include <cerrno>
 #include <cstring>
@@ -38,12 +37,6 @@ AITT::Impl::Impl(AITT *parent, const std::string &id, const std::string &ipAddr,
 {
     // TODO:
     // Validate ipAddr
-
-    if (id_.empty()) {
-        char buf[16];
-        int rc = getrandom(buf, sizeof(buf), 0);
-        id_ = "aitt-" + std::string(buf, rc);
-    }
 
     aittThread = std::thread(&AITT::Impl::ThreadMain, this);
 }
