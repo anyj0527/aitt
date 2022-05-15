@@ -20,6 +20,8 @@
 #include <sys/random.h>
 #include <unistd.h>
 
+#include <thread>
+
 #include "log.h"
 
 #define TEST_MSG "This is my test message"
@@ -479,6 +481,54 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
 
         aitt_retry.Publish("test/stress1", nullptr, 0, AITT_TYPE_TCP, AITT::QoS::AT_LEAST_ONCE);
         // Check auto release of aitt. It sould be no Segmentation fault
+    } catch (std::exception &e) {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+}
+
+TEST_F(AITTTest, WillSet_N_Anytime)
+{
+    EXPECT_THROW(
+          {
+              AITT aitt_will("", MY_IP, true);
+              aitt_will.SetWillInfo("+", "will msg", 8, AITT::AT_MOST_ONCE, false);
+              aitt_will.Connect();
+              aitt_will.Disconnect();
+          },
+          std::exception);
+}
+
+TEST_F(AITTTest, WillSet_P)
+{
+    try {
+        AITT aitt(clientId, MY_IP, true);
+        aitt.Connect();
+        aitt.Subscribe(
+              "test/AITT_will",
+              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+                  AITTTest *test = static_cast<AITTTest *>(cbdata);
+                  test->ToggleReady();
+                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
+              },
+              static_cast<void *>(this));
+
+        int pid = fork();
+        if (pid == 0) {
+            AITT aitt_will("test_will_AITT", MY_IP, true);
+            aitt_will.SetWillInfo("test/AITT_will", TEST_MSG, sizeof(TEST_MSG), AITT::AT_LEAST_ONCE,
+                  false);
+            aitt_will.Connect();
+            sleep(2);
+            // Do not call aitt_will.Disconnect()
+        } else {
+            sleep(1);
+            kill(pid, SIGKILL);
+
+            g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+            IterateEventLoop();
+
+            ASSERT_TRUE(ready);
+        }
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
     }

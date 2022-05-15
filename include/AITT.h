@@ -46,6 +46,9 @@ class API AITT {
     explicit AITT(const std::string &id, const std::string &ip_addr, bool clear_session = false);
     virtual ~AITT(void);
 
+    void SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
+          AITT::QoS qos, bool retain);
+
     void Connect(const std::string &host = AITT_LOCALHOST, int port = AITT_PORT,
           const std::string &username = std::string(), const std::string &password = std::string());
     void Disconnect(void);

@@ -54,6 +54,12 @@ AITT::~AITT(void)
 {
 }
 
+void AITT::SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
+      AITT::QoS qos, bool retain)
+{
+    return pImpl->SetWillInfo(topic, data, datalen, qos, retain);
+}
+
 void AITT::Connect(const std::string &host, int port, const std::string &username,
       const std::string &password)
 {

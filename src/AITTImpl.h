@@ -37,6 +37,9 @@ class AITT::Impl {
     Impl(AITT *parent, const std::string &id, const std::string &ipAddr, bool clearSession);
     virtual ~Impl(void);
 
+    void SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
+          AITT::QoS qos, bool retain);
+
     void Connect(const std::string &host, int port, const std::string &username,
           const std::string &password);
     void Disconnect(void);
@@ -87,6 +90,7 @@ class AITT::Impl {
     std::string mqtt_broker_ip_;
     int mqtt_broker_port_;
     MQ mq;
+    MQ discovery_mq;
     unsigned short reply_id;
     void *discoveryCallbackHandle;
     TransportModuleLoader modules;

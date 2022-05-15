@@ -33,7 +33,12 @@
 namespace aitt {
 
 AITT::Impl::Impl(AITT *parent, const std::string &id, const std::string &ipAddr, bool clearSession)
-      : id_(id), mq(id, clearSession), reply_id(0), discoveryCallbackHandle(0), modules(ipAddr)
+      : id_(id),
+        mq(id, clearSession),
+        discovery_mq(id + "d", true),
+        reply_id(0),
+        discoveryCallbackHandle(0),
+        modules(ipAddr)
 {
     // TODO:
     // Validate ipAddr
@@ -61,19 +66,26 @@ void AITT::Impl::ThreadMain(void)
     main_loop.Run();
 }
 
+void AITT::Impl::SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
+      AITT::QoS qos, bool retain)
+{
+    mq.SetWillInfo(topic, data, datalen, static_cast<MQ::QoS>(qos), retain);
+}
+
 void AITT::Impl::Connect(const std::string &host, int port, const std::string &username,
       const std::string &password)
 {
-    mq.SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
+    discovery_mq.SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
+    discovery_mq.Connect(host, port, username, password);
     mq.Connect(host, port, username, password);
 
     mqtt_broker_ip_ = host;
     mqtt_broker_port_ = port;
 
     if (discoveryCallbackHandle)
-        mq.Unsubscribe(discoveryCallbackHandle);
+        discovery_mq.Unsubscribe(discoveryCallbackHandle);
 
-    discoveryCallbackHandle = mq.Subscribe(DISCOVERY_TOPIC_BASE + "+",
+    discoveryCallbackHandle = discovery_mq.Subscribe(DISCOVERY_TOPIC_BASE + "+",
           AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), MQ::EXACTLY_ONCE);
 }
 
@@ -106,8 +118,9 @@ void AITT::Impl::Disconnect(void)
         subscribed_list.clear();
     }
 
-    mq.Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
-    mq.Unsubscribe(discoveryCallbackHandle);
+    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
+    discovery_mq.Unsubscribe(discoveryCallbackHandle);
+    discovery_mq.Disconnect();
     mq.Disconnect();
     discoveryCallbackHandle = nullptr;
     mqtt_broker_ip_ = std::string("");
@@ -445,7 +458,8 @@ void AITT::Impl::PublishSubscribeTable(void)
     fbb.Finish();
 
     auto buf = fbb.GetBuffer();
-    mq.Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), MQ::EXACTLY_ONCE, true);
+    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), MQ::EXACTLY_ONCE,
+          true);
 }
 
 void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,

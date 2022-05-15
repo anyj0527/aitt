@@ -90,6 +90,20 @@ API const char *aitt_get_option(aitt_h handle, aitt_option_e option)
     return nullptr;
 }
 
+API int aitt_will_set(aitt_h handle, const char *topic, const void *msg, const size_t msg_len,
+      int qos, bool retain)
+{
+    RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
+
+    try {
+        handle->aitt->SetWillInfo(topic, msg, msg_len, static_cast<AITT::QoS>(qos), retain);
+    } catch (std::exception &e) {
+        ERR("SetWillInfo(%s, %zu) Fail(%s)", topic, msg_len, e.what());
+        return AITT_ERROR_SYSTEM;
+    }
+    return AITT_ERROR_NONE;
+}
+
 API void aitt_destroy(aitt_h handle)
 {
     if (handle == nullptr) {

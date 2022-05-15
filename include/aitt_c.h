@@ -130,6 +130,28 @@ int aitt_set_option(aitt_h handle, aitt_option_e option, const char *value);
 const char *aitt_get_option(aitt_h handle, aitt_option_e option);
 
 /**
+ * @brief Configure will information for a aitt instance.
+ * @detail By default, clients do not have a will. This must be called before calling aitt_connect()
+ * @since_tizen 7.0
+ * @privlevel public
+ * @param[in] handle Handle of AITT service
+ * @param[in] topic the topic on which to publish the will.
+ * @param[in] msg pointer to the data to send.
+ * @param[in] msg_len the size of the @c msg (bytes). Valid values are between 0 and 268,435,455.
+ * @param[in] qos integer value 0, 1 or 2 indicating the Quality of Service.
+ * @param[in] retain set to true to make the will a retained message.
+ * @return @c 0 on success
+ *         otherwise a negative error value
+ * @retval #AITT_ERROR_NONE  Success
+ * @retval #AITT_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #AITT_ERROR_SYSTEM System errors
+ *
+ * @see aitt_connect()
+ */
+int aitt_will_set(aitt_h handle, const char *topic, const void *msg, const size_t msg_len, int qos,
+      bool retain);
+
+/**
  * @brief Release memory of the AITT service instance.
  * @since_tizen 7.0
  * @privlevel public
