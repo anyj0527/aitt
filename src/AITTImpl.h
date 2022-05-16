@@ -37,8 +37,8 @@ class AITT::Impl {
     Impl(AITT &parent, const std::string &id, const std::string &ipAddr, bool clearSession);
     virtual ~Impl(void);
 
-    void SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
-          AITT::QoS qos, bool retain);
+    void SetWillInfo(const std::string &topic, const void *data, const size_t datalen, AittQoS qos,
+          bool retain);
     void SetConnectionCallback(ConnectionCallback cb, void *user_data);
     void Connect(const std::string &host, int port, const std::string &username,
           const std::string &password);
@@ -48,18 +48,18 @@ class AITT::Impl {
           AittProtocol protocols);
 
     void Publish(const std::string &topic, const void *data, const size_t datalen,
-          AittProtocol protocols, AITT::QoS qos, bool retain);
+          AittProtocol protocols, AittQoS qos, bool retain);
 
     int PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-          AittProtocol protocol, AITT::QoS qos, bool retain, const AITT::SubscribeCallback &cb,
+          AittProtocol protocol, AittQoS qos, bool retain, const AITT::SubscribeCallback &cb,
           void *cbdata, const std::string &correlation);
 
     int PublishWithReplySync(const std::string &topic, const void *data, const size_t datalen,
-          AittProtocol protocol, AITT::QoS qos, bool retain, const SubscribeCallback &cb,
+          AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb,
           void *cbdata, const std::string &correlation, int timeout_ms);
 
     AittSubscribeID Subscribe(const std::string &topic, const AITT::SubscribeCallback &cb,
-          void *cbdata, AittProtocol protocols, AITT::QoS qos);
+          void *cbdata, AittProtocol protocols, AittQoS qos);
 
     void *Unsubscribe(AittSubscribeID handle);
 
@@ -74,19 +74,19 @@ class AITT::Impl {
 
     void ConnectionCB(ConnectionCallback cb, void *user_data, int status);
     AittSubscribeID MQSubscribe(SubscribeInfo *info, MainLoopHandler *loop_handle,
-          const std::string &topic, const SubscribeCallback &cb, void *cbdata, AITT::QoS qos);
+          const std::string &topic, const SubscribeCallback &cb, void *cbdata, AittQoS qos);
     void DetachedCB(SubscribeCallback cb, MSG mq_msg, void *data, const size_t datalen,
           void *cbdata, MainLoopHandler::MainLoopResult result, int fd,
           MainLoopHandler::MainLoopData *loop_data);
     void PublishSubscribeTable(void);
     void *SubscribeTCP(SubscribeInfo *, const std::string &topic, const SubscribeCallback &cb,
-          void *cbdata, QoS qos);
+          void *cbdata, AittQoS qos);
     void *SubscribeWebRtc(SubscribeInfo *, const std::string &topic, const SubscribeCallback &cb,
-          void *cbdata, QoS qos);
+          void *cbdata, AittQoS qos);
     void HandleTimeout(int timeout_ms, unsigned int &timeout_id, aitt::MainLoopHandler &sync_loop,
           bool &is_timeout);
     void PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
-          AITT::QoS qos, bool retain);
+          AittQoS qos, bool retain);
 
     AITT &public_api;
     std::string id_;

@@ -55,6 +55,13 @@ typedef AittSubscribeID aitt_sub_h;
 typedef enum AittProtocol aitt_protocol_e;
 
 /**
+ * @brief Enumeration for MQTT QoS.
+ *        It only works with the AITT_TYPE_MQTT
+ * @since_tizen 7.0
+ */
+typedef enum AittQoS aitt_qos_e;
+
+/**
  * @brief Enumeration for AITT error code.
  * @since_tizen 7.0
  */
@@ -148,8 +155,8 @@ const char *aitt_get_option(aitt_h handle, aitt_option_e option);
  *
  * @see aitt_connect()
  */
-int aitt_will_set(aitt_h handle, const char *topic, const void *msg, const size_t msg_len, int qos,
-      bool retain);
+int aitt_will_set(aitt_h handle, const char *topic, const void *msg, const size_t msg_len,
+      aitt_qos_e qos, bool retain);
 
 /**
  * @brief Release memory of the AITT service instance.
@@ -239,7 +246,7 @@ int aitt_publish(aitt_h handle, const char *topic, const void *msg, const size_t
  * @retval #AITT_ERROR_SYSTEM System errors
  */
 int aitt_publish_full(aitt_h handle, const char *topic, const void *msg, const size_t msg_len,
-      int protocols, int qos);
+      int protocols, aitt_qos_e qos);
 
 /**
  * @brief Publish a message on a given topic as aitt_publish_full(),
@@ -262,7 +269,8 @@ int aitt_publish_full(aitt_h handle, const char *topic, const void *msg, const s
  * @retval #AITT_ERROR_SYSTEM System errors
  */
 int aitt_publish_with_reply(aitt_h handle, const char *topic, const void *msg, const size_t msg_len,
-      aitt_protocol_e protocols, int qos, const char *correlation, aitt_sub_fn cb, void *user_data);
+      aitt_protocol_e protocols, aitt_qos_e qos, const char *correlation, aitt_sub_fn cb,
+      void *user_data);
 
 /**
  * @brief Send reply message to regarding topic.
@@ -330,7 +338,7 @@ int aitt_subscribe(aitt_h handle, const char *topic, aitt_sub_fn cb, void *user_
  * @retval #AITT_ERROR_SYSTEM System errors
  */
 int aitt_subscribe_full(aitt_h handle, const char *topic, aitt_sub_fn cb, void *user_data,
-      aitt_protocol_e protocols, int qos, aitt_sub_h *sub_handle);
+      aitt_protocol_e protocols, aitt_qos_e qos, aitt_sub_h *sub_handle);
 
 /**
  * @brief Unsubscribe from a topic.

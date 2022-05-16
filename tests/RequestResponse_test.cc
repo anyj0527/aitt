@@ -32,7 +32,7 @@ class AITTRRTest : public testing::Test {
     {
         aitt->PublishWithReplySync(
               rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
-              aitt::AITT::AT_MOST_ONCE, false,
+              AITT_QOS_AT_MOST_ONCE, false,
               [&](aitt::MSG *msg, const void *data, const size_t datalen, void *cbdata) {
                   CheckReply(msg, data, datalen);
                   *reply1_ok = true;
@@ -109,16 +109,16 @@ class AITTRRTest : public testing::Test {
             if ((i == 0 && first_sync) || (i == 1 && second_sync)) {
                 INFO("PublishWithReplySync() Call");
                 aitt.PublishWithReplySync(rr_topic.c_str(), message.c_str(), message.size(),
-                      AITT_TYPE_MQTT, AITT::AT_MOST_ONCE, false,
-                      std::bind(&AITTRRTest::CheckReplyCallback, this, (i == 1), &reply_ok[i],
-                            _1, _2, _3, _4),
+                      AITT_TYPE_MQTT, AITT_QOS_AT_MOST_ONCE, false,
+                      std::bind(&AITTRRTest::CheckReplyCallback, this, (i == 1), &reply_ok[i], _1,
+                            _2, _3, _4),
                       nullptr, correlation);
             } else {
                 INFO("PublishWithReply() Call");
                 aitt.PublishWithReply(rr_topic.c_str(), message.c_str(), message.size(),
-                      AITT_TYPE_MQTT, AITT::AT_MOST_ONCE, false,
-                      std::bind(&AITTRRTest::CheckReplyCallback, this, (i == 1), &reply_ok[i],
-                            _1, _2, _3, _4),
+                      AITT_TYPE_MQTT, AITT_QOS_AT_MOST_ONCE, false,
+                      std::bind(&AITTRRTest::CheckReplyCallback, this, (i == 1), &reply_ok[i], _1,
+                            _2, _3, _4),
                       nullptr, correlation);
             }
         }
@@ -158,10 +158,10 @@ class AITTRRTest : public testing::Test {
 
         if (sync) {
             aitt.PublishWithReplySync(rr_topic.c_str(), message.c_str(), message.size(),
-                  AITT_TYPE_MQTT, AITT::AT_MOST_ONCE, false, replyCB, nullptr, correlation);
+                  AITT_TYPE_MQTT, AITT_QOS_AT_MOST_ONCE, false, replyCB, nullptr, correlation);
         } else {
             aitt.PublishWithReply(rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
-                  AITT::AT_MOST_ONCE, false, replyCB, nullptr, correlation);
+                  AITT_QOS_AT_MOST_ONCE, false, replyCB, nullptr, correlation);
         }
 
         g_timeout_add(10, AITTRRTest::ReadyCheck, static_cast<void *>(this));
@@ -212,7 +212,7 @@ TEST_F(AITTRRTest, RequestResponse_P_Anytime)
               });
 
         aitt.PublishWithReply(rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
-              AITT::AT_MOST_ONCE, false,
+              AITT_QOS_AT_MOST_ONCE, false,
               std::bind(&AITTRRTest::CheckReplyCallback, GetHandle(), true, &reply_ok,
                     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                     std::placeholders::_4),
@@ -253,8 +253,8 @@ TEST_F(AITTRRTest, RequestResponse_asymmetry_Anytime)
               });
 
         aitt.PublishWithReply(
-              rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT, AITT::AT_MOST_ONCE,
-              false,
+              rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
+              AITT_QOS_AT_MOST_ONCE, false,
               [&](aitt::MSG *msg, const void *data, const size_t datalen, void *cbdata) {
                   std::string reply((const char *)data, datalen);
 
@@ -317,7 +317,7 @@ TEST_F(AITTRRTest, RequestResponse_sync_P_Anytime)
               });
 
         aitt.PublishWithReplySync(rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
-              AITT::AT_MOST_ONCE, false,
+              AITT_QOS_AT_MOST_ONCE, false,
               std::bind(&AITTRRTest::CheckReplyCallback, GetHandle(), false, &reply1_ok,
                     std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                     std::placeholders::_4),
@@ -368,8 +368,8 @@ TEST_F(AITTRRTest, RequestResponse_timeout_P_Anytime)
         aitt.Connect();
 
         int ret = aitt.PublishWithReplySync(
-              rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT, AITT::AT_MOST_ONCE,
-              false,
+              rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
+              AITT_QOS_AT_MOST_ONCE, false,
               [&](aitt::MSG *msg, const void *data, const size_t datalen, void *cbdata) {
                   FAIL() << "Should not be called";
               },
@@ -401,8 +401,8 @@ TEST_F(AITTRRTest, RequestResponse_timeout_restart_P_Anytime)
         aitt.Connect();
 
         int ret = aitt.PublishWithReplySync(
-              rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT, AITT::AT_MOST_ONCE,
-              false,
+              rr_topic.c_str(), message.c_str(), message.size(), AITT_TYPE_MQTT,
+              AITT_QOS_AT_MOST_ONCE, false,
               [&](aitt::MSG *msg, const void *data, const size_t datalen, void *cbdata) {
                   INFO("Reply Callback is called");
                   static int invalid = 0;

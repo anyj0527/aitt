@@ -34,17 +34,16 @@ class TransportModule {
     virtual ~TransportModule(void) = default;
 
     virtual void Publish(const std::string &topic, const void *data, const size_t datalen,
-          const std::string &correlation, AITT::QoS qos = AITT::QoS::AT_MOST_ONCE,
+          const std::string &correlation, AittQoS qos = AITT_QOS_AT_MOST_ONCE,
           bool retain = false) = 0;
 
     virtual void Publish(const std::string &topic, const void *data, const size_t datalen,
-          AITT::QoS qos = AITT::QoS::AT_MOST_ONCE, bool retain = false) = 0;
+          AittQoS qos = AITT_QOS_AT_MOST_ONCE, bool retain = false) = 0;
 
     virtual void *Subscribe(const std::string &topic, const SubscribeCallback &cb,
-          void *cbdata = nullptr, AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) = 0;
+          void *cbdata = nullptr, AittQoS qos = AITT_QOS_AT_MOST_ONCE) = 0;
     virtual void *Subscribe(const std::string &topic, const SubscribeCallback &cb, const void *data,
-          const size_t datalen, void *cbdata = nullptr,
-          AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) = 0;
+          const size_t datalen, void *cbdata = nullptr, AittQoS qos = AITT_QOS_AT_MOST_ONCE) = 0;
 
     virtual void *Unsubscribe(void *handle) = 0;
 

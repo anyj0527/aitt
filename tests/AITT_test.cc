@@ -461,7 +461,7 @@ TEST_F(AITTTest, Positive_Subscribe_Retained_Anytime)
         // NOTE:
         // Publish a message with the retained flag
         // This message will not be delivered, subscriber subscribes TCP protocol
-        aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG), AITT_TYPE_MQTT, AITT::QoS::AT_MOST_ONCE,
+        aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG), AITT_TYPE_MQTT, AITT_QOS_AT_MOST_ONCE,
               true);
 
         aitt.Publish(testTopic, TEST_MSG2, sizeof(TEST_MSG2), AITT_TYPE_TCP);
@@ -470,7 +470,7 @@ TEST_F(AITTTest, Positive_Subscribe_Retained_Anytime)
 
         IterateEventLoop();
 
-        aitt.Publish(testTopic, nullptr, 0, AITT_TYPE_MQTT, AITT::QoS::AT_LEAST_ONCE, true);
+        aitt.Publish(testTopic, nullptr, 0, AITT_TYPE_MQTT, AITT_QOS_AT_LEAST_ONCE, true);
 
         ASSERT_TRUE(ready);
     } catch (std::exception &e) {
@@ -514,7 +514,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
 
             for (int i = 0; i < 10; i++) {
                 aitt1.Publish("test/stress1", dump_msg, dump_msg_size, AITT_TYPE_TCP,
-                      AITT::QoS::AT_MOST_ONCE, true);
+                      AITT_QOS_AT_MOST_ONCE, true);
             }
 
             g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
@@ -530,7 +530,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
         ready = false;
 
         aitt_retry.Publish("test/stress1", dump_msg, dump_msg_size, AITT_TYPE_TCP,
-              AITT::QoS::AT_MOST_ONCE, true);
+              AITT_QOS_AT_MOST_ONCE, true);
 
         g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
 
@@ -538,7 +538,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
 
         ASSERT_TRUE(ready);
 
-        aitt_retry.Publish("test/stress1", nullptr, 0, AITT_TYPE_TCP, AITT::QoS::AT_LEAST_ONCE);
+        aitt_retry.Publish("test/stress1", nullptr, 0, AITT_TYPE_TCP, AITT_QOS_AT_LEAST_ONCE);
         // Check auto release of aitt. It sould be no Segmentation fault
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
@@ -550,7 +550,7 @@ TEST_F(AITTTest, WillSet_N_Anytime)
     EXPECT_THROW(
           {
               AITT aitt_will("", MY_IP, true);
-              aitt_will.SetWillInfo("+", "will msg", 8, AITT::AT_MOST_ONCE, false);
+              aitt_will.SetWillInfo("+", "will msg", 8, AITT_QOS_AT_MOST_ONCE, false);
               aitt_will.Connect();
               aitt_will.Disconnect();
           },
@@ -574,8 +574,8 @@ TEST_F(AITTTest, WillSet_P)
         int pid = fork();
         if (pid == 0) {
             AITT aitt_will("test_will_AITT", MY_IP, true);
-            aitt_will.SetWillInfo("test/AITT_will", TEST_MSG, sizeof(TEST_MSG), AITT::AT_LEAST_ONCE,
-                  false);
+            aitt_will.SetWillInfo("test/AITT_will", TEST_MSG, sizeof(TEST_MSG),
+                  AITT_QOS_AT_LEAST_ONCE, false);
             aitt_will.Connect();
             sleep(2);
             // Do not call aitt_will.Disconnect()

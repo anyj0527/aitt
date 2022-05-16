@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <mutex>
 
+#include "AittTypes.h"
 #include "MQTTMock.h"
 #include "MQTTTest.h"
 
@@ -73,7 +74,7 @@ TEST_F(MQTTTest, Positive_Publish_Anytime)
     EXPECT_CALL(GetMock(), mosquitto_connect(TEST_HANDLE, testing::StrEq(TEST_HOST), TEST_PORT, 60))
           .WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_publish(TEST_HANDLE, testing::_, testing::StrEq(TEST_TOPIC),
-                                 sizeof(TEST_PAYLOAD), TEST_PAYLOAD, 0, false))
+                                 sizeof(TEST_PAYLOAD), TEST_PAYLOAD, AITT_QOS_AT_MOST_ONCE, false))
           .WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_destroy(TEST_HANDLE)).Times(1);
     EXPECT_CALL(GetMock(), mosquitto_lib_cleanup()).WillOnce(Return(MOSQ_ERR_SUCCESS));
@@ -96,8 +97,8 @@ TEST_F(MQTTTest, Positive_Subscribe_Anytime)
     EXPECT_CALL(GetMock(), mosquitto_loop_start(TEST_HANDLE)).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_connect(TEST_HANDLE, testing::StrEq(TEST_HOST), TEST_PORT, 60))
           .WillOnce(Return(MOSQ_ERR_SUCCESS));
-    EXPECT_CALL(GetMock(),
-          mosquitto_subscribe(TEST_HANDLE, testing::_, testing::StrEq(TEST_TOPIC), 0))
+    EXPECT_CALL(GetMock(), mosquitto_subscribe(TEST_HANDLE, testing::_, testing::StrEq(TEST_TOPIC),
+                                 AITT_QOS_AT_MOST_ONCE))
           .WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_destroy(TEST_HANDLE)).Times(1);
     EXPECT_CALL(GetMock(), mosquitto_lib_cleanup()).WillOnce(Return(MOSQ_ERR_SUCCESS));
@@ -109,7 +110,7 @@ TEST_F(MQTTTest, Positive_Subscribe_Anytime)
               TEST_TOPIC,
               [](aitt::MSG *info, const std::string &topic, const void *msg, const int szmsg,
                     const void *cbdata) -> void {},
-              nullptr, static_cast<aitt::MQ::QoS>(0));
+              nullptr, AITT_QOS_AT_MOST_ONCE);
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
     }
@@ -140,7 +141,7 @@ TEST_F(MQTTTest, Positive_Unsubscribe_Anytime)
               TEST_TOPIC,
               [](aitt::MSG *info, const std::string &topic, const void *msg, const int szmsg,
                     const void *cbdata) -> void {},
-              nullptr, static_cast<aitt::MQ::QoS>(0));
+              nullptr, AITT_QOS_AT_MOST_ONCE);
         mq.Unsubscribe(handle);
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
@@ -173,14 +174,13 @@ TEST_F(MQTTTest, Negative_Connect_will_set_Anytime)
           .WillOnce(Return(TEST_HANDLE));
     EXPECT_CALL(GetMock(), mosquitto_message_v5_callback_set(TEST_HANDLE, testing::_)).Times(1);
     EXPECT_CALL(GetMock(), mosquitto_will_set(TEST_HANDLE, testing::StrEq("lastWill"),
-                                 sizeof(TEST_PAYLOAD), TEST_PAYLOAD, 0, true))
+                                 sizeof(TEST_PAYLOAD), TEST_PAYLOAD, AITT_QOS_AT_MOST_ONCE, true))
           .WillOnce(Return(MOSQ_ERR_NOMEM));
     EXPECT_CALL(GetMock(), mosquitto_destroy(TEST_HANDLE)).Times(1);
     EXPECT_CALL(GetMock(), mosquitto_lib_cleanup()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     try {
         aitt::MQ mq(TEST_CLIENT_ID, true);
-        mq.SetWillInfo("lastWill", TEST_PAYLOAD, sizeof(TEST_PAYLOAD), aitt::MQ::QoS::AT_MOST_ONCE,
-              true);
+        mq.SetWillInfo("lastWill", TEST_PAYLOAD, sizeof(TEST_PAYLOAD), AITT_QOS_AT_MOST_ONCE, true);
         mq.Connect(TEST_HOST, TEST_PORT, "", "");
         FAIL() << "Connect() must be failed";
     } catch (std::exception &e) {

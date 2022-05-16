@@ -33,11 +33,6 @@ namespace aitt {
 
 class MQ {
   public:
-    enum QoS : int {
-        AT_MOST_ONCE = 0,   // Fire and forget
-        AT_LEAST_ONCE = 1,  // Receiver is able to receive multiple times
-        EXACTLY_ONCE = 2,   // Receiver only receives exactly once
-    };
     using SubscribeCallback =
           std::function<void(MSG *, const std::string &topic, const void *, const int, void *)>;
     using MQConnectionCallback = std::function<void(int)>;
@@ -50,16 +45,15 @@ class MQ {
     void SetConnectionCallback(MQConnectionCallback cb);
     void Connect(const std::string &host, int port, const std::string &username,
           const std::string &password);
-    void SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, MQ::QoS qos,
-          bool retain);
+    void SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, int qos, bool retain);
     void Disconnect(void);
-    void Publish(const std::string &topic, const void *data, const size_t datalen,
-          MQ::QoS qos = QoS::AT_MOST_ONCE, bool retain = false);
-    void PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-          MQ::QoS qos, bool retain, const std::string &reply_topic, const std::string &correlation);
-    void SendReply(MSG *msg, const void *data, const size_t datalen, MQ::QoS qos, bool retain);
+    void Publish(const std::string &topic, const void *data, const size_t datalen, int qos = 0,
+          bool retain = false);
+    void PublishWithReply(const std::string &topic, const void *data, const size_t datalen, int qos,
+          bool retain, const std::string &reply_topic, const std::string &correlation);
+    void SendReply(MSG *msg, const void *data, const size_t datalen, int qos, bool retain);
     void *Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata = nullptr,
-          MQ::QoS qos = QoS::AT_MOST_ONCE);
+          int qos = 0);
     void *Unsubscribe(void *handle);
 
   private:

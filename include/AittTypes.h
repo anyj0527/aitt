@@ -27,6 +27,13 @@ enum AittProtocol {
     AITT_TYPE_WEBRTC = (0x1 << 4),  // Publish message to peers using the WEBRTC
 };
 
+// AittQoS only works with the AITT_TYPE_MQTT
+enum AittQoS {
+    AITT_QOS_AT_MOST_ONCE = 0,   // Fire and forget
+    AITT_QOS_AT_LEAST_ONCE = 1,  // Receiver is able to receive multiple times
+    AITT_QOS_EXACTLY_ONCE = 2,   // Receiver only receives exactly once
+};
+
 enum AittConnectionState {
     AITT_DISCONNECTED = 0,  // The connection is disconnected.
     AITT_CONNECTED = 1,     // A connection was successfully established to the mqtt broker.

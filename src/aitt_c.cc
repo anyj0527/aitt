@@ -91,12 +91,12 @@ API const char *aitt_get_option(aitt_h handle, aitt_option_e option)
 }
 
 API int aitt_will_set(aitt_h handle, const char *topic, const void *msg, const size_t msg_len,
-      int qos, bool retain)
+      aitt_qos_e qos, bool retain)
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
 
     try {
-        handle->aitt->SetWillInfo(topic, msg, msg_len, static_cast<AITT::QoS>(qos), retain);
+        handle->aitt->SetWillInfo(topic, msg, msg_len, qos, retain);
     } catch (std::exception &e) {
         ERR("SetWillInfo(%s, %zu) Fail(%s)", topic, msg_len, e.what());
         return AITT_ERROR_SYSTEM;
@@ -171,11 +171,11 @@ API int aitt_disconnect(aitt_h handle)
 
 API int aitt_publish(aitt_h handle, const char *topic, const void *msg, const size_t msg_len)
 {
-    return aitt_publish_full(handle, topic, msg, msg_len, AITT_TYPE_MQTT, 0);
+    return aitt_publish_full(handle, topic, msg, msg_len, AITT_TYPE_MQTT, AITT_QOS_AT_MOST_ONCE);
 }
 
 API int aitt_publish_full(aitt_h handle, const char *topic, const void *msg, const size_t msg_len,
-      int protocols, int qos)
+      int protocols, aitt_qos_e qos)
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);
@@ -194,7 +194,7 @@ API int aitt_publish_full(aitt_h handle, const char *topic, const void *msg, con
 }
 
 API int aitt_publish_with_reply(aitt_h handle, const char *topic, const void *msg,
-      const size_t msg_len, aitt_protocol_e protocols, int qos, const char *correlation,
+      const size_t msg_len, aitt_protocol_e protocols, aitt_qos_e qos, const char *correlation,
       aitt_sub_fn cb, void *user_data)
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
@@ -206,8 +206,8 @@ API int aitt_publish_with_reply(aitt_h handle, const char *topic, const void *ms
 
     try {
         // TODO: handle protocols, qos
-        handle->aitt->PublishWithReply(topic, msg, msg_len, protocols, AITT::QoS::AT_LEAST_ONCE,
-              false, cb, user_data, std::string(correlation));
+        handle->aitt->PublishWithReply(topic, msg, msg_len, protocols, AITT_QOS_AT_MOST_ONCE, false,
+              cb, user_data, std::string(correlation));
     } catch (std::exception &e) {
         ERR("PublishWithReply(%s) Fail(%s)", topic, e.what());
         return AITT_ERROR_SYSTEM;
@@ -232,11 +232,12 @@ API int aitt_send_reply(aitt_h handle, aitt_msg_h msg_handle, const void *reply,
 API int aitt_subscribe(aitt_h handle, const char *topic, aitt_sub_fn cb, void *user_data,
       aitt_sub_h *sub_handle)
 {
-    return aitt_subscribe_full(handle, topic, cb, user_data, AITT_TYPE_MQTT, 0, sub_handle);
+    return aitt_subscribe_full(handle, topic, cb, user_data, AITT_TYPE_MQTT, AITT_QOS_AT_MOST_ONCE,
+          sub_handle);
 }
 
 API int aitt_subscribe_full(aitt_h handle, const char *topic, aitt_sub_fn cb, void *user_data,
-      aitt_protocol_e protocol, int qos, aitt_sub_h *sub_handle)
+      aitt_protocol_e protocol, aitt_qos_e qos, aitt_sub_h *sub_handle)
 {
     RETV_IF(handle == nullptr, AITT_ERROR_INVALID_PARAMETER);
     RETV_IF(handle->aitt == nullptr, AITT_ERROR_INVALID_PARAMETER);

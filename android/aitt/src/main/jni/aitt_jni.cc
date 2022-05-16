@@ -16,13 +16,12 @@
 #include "aitt_jni.h"
 
 AittNativeInterface::CallbackContext AittNativeInterface::cbContext = {
-        .jvm = nullptr,
-        .messageCallbackMethodID = nullptr,
+      .jvm = nullptr,
+      .messageCallbackMethodID = nullptr,
 };
 
 AittNativeInterface::AittNativeInterface(std::string &mqId, std::string &ip, bool clearSession)
-        : cbObject(nullptr)
-        , aitt(mqId, ip, clearSession)
+      : cbObject(nullptr), aitt(mqId, ip, clearSession)
 {
 }
 
@@ -68,8 +67,8 @@ std::string AittNativeInterface::GetStringUTF(JNIEnv *env, jstring str)
     return _str;
 }
 
-void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_connectJNI(JNIEnv *env, jobject jniInterfaceObject,
-                                          jlong handle, jstring host, jint port)
+void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_connectJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jlong handle, jstring host, jint port)
 {
     if (env == nullptr || jniInterfaceObject == nullptr) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or Jobject is null");
@@ -91,8 +90,9 @@ void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_connectJNI(JNIEnv *
     }
 }
 
-void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_publishJNI(JNIEnv *env, jobject jniInterfaceObject, jlong handle,
-                                          jstring topic, jbyteArray data, jlong datalen, jint protocol, jint qos, jboolean retain)
+void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_publishJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jlong handle, jstring topic, jbyteArray data, jlong datalen,
+      jint protocol, jint qos, jboolean retain)
 {
     if (env == nullptr || jniInterfaceObject == nullptr) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or jobject is null");
@@ -110,15 +110,14 @@ void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_publishJNI(JNIEnv *
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to get byte array elements");
         return;
     }
-    const void *_data = reinterpret_cast<const void*>(cdata);
+    const void *_data = reinterpret_cast<const void *>(cdata);
 
     AittProtocol _protocol = static_cast<AittProtocol>(protocol);
-    AITT::QoS _qos = static_cast<AITT::QoS>(qos);
+    AittQoS _qos = static_cast<AittQoS>(qos);
     bool _retain = (bool)retain;
 
     try {
-        instance->aitt.Publish(customTopic, _data, num_bytes, _protocol,
-                               _qos, _retain);
+        instance->aitt.Publish(customTopic, _data, num_bytes, _protocol, _qos, _retain);
     } catch (std::exception &e) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to publish");
         JNI_LOG(ANDROID_LOG_ERROR, TAG, e.what());
@@ -126,7 +125,8 @@ void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_publishJNI(JNIEnv *
     env->ReleaseByteArrayElements(data, reinterpret_cast<jbyte *>((char *)cdata), 0);
 }
 
-void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI(JNIEnv *env, jobject jniInterfaceObject, jlong handle)
+void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jlong handle)
 {
     if (env == nullptr || jniInterfaceObject == nullptr) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or Jobject is null");
@@ -141,8 +141,8 @@ void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI(JNIEn
     }
 }
 
-jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_subscribeJNI(JNIEnv *env, jobject jniInterfaceObject, jlong handle,
-                                             jstring topic, jint protocol, jint qos)
+jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_subscribeJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jlong handle, jstring topic, jint protocol, jint qos)
 {
     if (env == nullptr || jniInterfaceObject == nullptr) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or Jobject is null");
@@ -155,52 +155,54 @@ jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_subscribeJNI(JNIEn
     }
 
     AittProtocol _protocol = static_cast<AittProtocol>(protocol);
-    AITT::QoS _qos = static_cast<AITT::QoS>(qos);
+    AittQoS _qos = static_cast<AittQoS>(qos);
 
     AittSubscribeID _id = nullptr;
     try {
         _id = instance->aitt.Subscribe(
-                customTopic,
-                [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
-                    AittNativeInterface *instance = reinterpret_cast<AittNativeInterface *>(cbdata);
-                    JNIEnv* env;
-                    int JNIStatus = cbContext.jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
-                    if (JNIStatus == JNI_EDETACHED) {
-                        if (cbContext.jvm->AttachCurrentThread(&env, nullptr) != 0) {
-                            JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to attach current thread");
-                            return;
-                        }
-                    } else if (JNIStatus == JNI_EVERSION) {
-                        JNI_LOG(ANDROID_LOG_ERROR, TAG, "Unsupported version");
-                        return;
-                    }
-                    if (env != nullptr && instance->cbObject != nullptr) {
-                        jstring _topic = env->NewStringUTF(handle->GetTopic().c_str());
-                        if (env->ExceptionCheck() == true) {
-                            JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to create new UTF string");
-                            cbContext.jvm->DetachCurrentThread();
-                            return;
-                        }
+              customTopic,
+              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+                  AittNativeInterface *instance = reinterpret_cast<AittNativeInterface *>(cbdata);
+                  JNIEnv *env;
+                  int JNIStatus =
+                        cbContext.jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+                  if (JNIStatus == JNI_EDETACHED) {
+                      if (cbContext.jvm->AttachCurrentThread(&env, nullptr) != 0) {
+                          JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to attach current thread");
+                          return;
+                      }
+                  } else if (JNIStatus == JNI_EVERSION) {
+                      JNI_LOG(ANDROID_LOG_ERROR, TAG, "Unsupported version");
+                      return;
+                  }
+                  if (env != nullptr && instance->cbObject != nullptr) {
+                      jstring _topic = env->NewStringUTF(handle->GetTopic().c_str());
+                      if (env->ExceptionCheck() == true) {
+                          JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to create new UTF string");
+                          cbContext.jvm->DetachCurrentThread();
+                          return;
+                      }
 
-                        jbyteArray array = env->NewByteArray(szmsg);
-                        auto _msg = reinterpret_cast<unsigned char *>(const_cast<void *>(msg));
-                        env->SetByteArrayRegion(array, 0, szmsg, reinterpret_cast<jbyte *>(_msg));
-                        if (env->ExceptionCheck() == true) {
-                            JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to set byte array");
-                            cbContext.jvm->DetachCurrentThread();
-                            return;
-                        }
+                      jbyteArray array = env->NewByteArray(szmsg);
+                      auto _msg = reinterpret_cast<unsigned char *>(const_cast<void *>(msg));
+                      env->SetByteArrayRegion(array, 0, szmsg, reinterpret_cast<jbyte *>(_msg));
+                      if (env->ExceptionCheck() == true) {
+                          JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to set byte array");
+                          cbContext.jvm->DetachCurrentThread();
+                          return;
+                      }
 
-                        env->CallVoidMethod(instance->cbObject, cbContext.messageCallbackMethodID, _topic, array);
-                        if (env->ExceptionCheck() == true) {
-                            JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to call void method");
-                            cbContext.jvm->DetachCurrentThread();
-                            return;
-                        }
-                    }
-                    cbContext.jvm->DetachCurrentThread();
-                },
-                reinterpret_cast<void *>(instance), _protocol, _qos);
+                      env->CallVoidMethod(instance->cbObject, cbContext.messageCallbackMethodID,
+                            _topic, array);
+                      if (env->ExceptionCheck() == true) {
+                          JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to call void method");
+                          cbContext.jvm->DetachCurrentThread();
+                          return;
+                      }
+                  }
+                  cbContext.jvm->DetachCurrentThread();
+              },
+              reinterpret_cast<void *>(instance), _protocol, _qos);
     } catch (std::exception &e) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to subscribe");
         JNI_LOG(ANDROID_LOG_ERROR, TAG, e.what());
@@ -208,8 +210,8 @@ jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_subscribeJNI(JNIEn
     return (jlong)_id;
 }
 
-void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI(JNIEnv *env, jobject jniInterfaceObject,
-                                              jlong handle, jlong aittSubId)
+void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jlong handle, jlong aittSubId)
 {
     if (env == nullptr || jniInterfaceObject == nullptr) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or Jobject is null");
@@ -225,8 +227,8 @@ void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI(JNIE
     }
 }
 
-jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI(JNIEnv *env, jobject jniInterfaceObject,
-                                        jstring id, jstring ip, jboolean clearSession)
+jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jstring id, jstring ip, jboolean clearSession)
 {
     if (env == nullptr || jniInterfaceObject == nullptr) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or Jobject is null");
@@ -263,8 +265,8 @@ jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI(JNIEnv *en
         instance->cbObject = env->NewGlobalRef(jniInterfaceObject);
 
         jclass callbackClass = env->FindClass("com/samsung/android/aitt/Aitt");
-        cbContext.messageCallbackMethodID = env->GetMethodID(callbackClass, "messageCallback",
-                                                               "(Ljava/lang/String;[B)V");
+        cbContext.messageCallbackMethodID =
+              env->GetMethodID(callbackClass, "messageCallback", "(Ljava/lang/String;[B)V");
         env->DeleteLocalRef(callbackClass);
     } catch (std::exception &e) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, e.what());
@@ -289,20 +291,26 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
         return JNI_ERR;
     }
     static JNINativeMethod aitt_jni_methods[] = {
-            {"initJNI", "(Ljava/lang/String;Ljava/lang/String;Z)J",
-                    reinterpret_cast<void *>(AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI)},
-            {"connectJNI", "(JLjava/lang/String;I)V",
-                    reinterpret_cast<void *>(AittNativeInterface::Java_com_samsung_android_aitt_Aitt_connectJNI)},
-            {"subscribeJNI", "(JLjava/lang/String;II)J",
-                    reinterpret_cast<void *>(AittNativeInterface::Java_com_samsung_android_aitt_Aitt_subscribeJNI)},
-            {"publishJNI", "(JLjava/lang/String;[BJIIZ)V",
-                    reinterpret_cast<void *>(AittNativeInterface::Java_com_samsung_android_aitt_Aitt_publishJNI)},
-            {"unsubscribeJNI", "(JJ)V",
-                    reinterpret_cast<void *>(AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI)},
-            {"disconnectJNI", "(J)V",
-                    reinterpret_cast<void *>(AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI)}};
+          {"initJNI", "(Ljava/lang/String;Ljava/lang/String;Z)J",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI)},
+          {"connectJNI", "(JLjava/lang/String;I)V",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_connectJNI)},
+          {"subscribeJNI", "(JLjava/lang/String;II)J",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_subscribeJNI)},
+          {"publishJNI", "(JLjava/lang/String;[BJIIZ)V",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_publishJNI)},
+          {"unsubscribeJNI", "(JJ)V",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI)},
+          {"disconnectJNI", "(J)V",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI)}};
     if (env->RegisterNatives(klass, aitt_jni_methods,
-                             sizeof(aitt_jni_methods) / sizeof(aitt_jni_methods[0]))) {
+              sizeof(aitt_jni_methods) / sizeof(aitt_jni_methods[0]))) {
         env->DeleteLocalRef(klass);
         return JNI_ERR;
     }

@@ -51,7 +51,7 @@ void Module::ThreadMain(void)
 }
 
 void Module::Publish(const std::string &topic, const void *data, const size_t datalen,
-      const std::string &correlation, AITT::QoS qos, bool retain)
+      const std::string &correlation, AittQoS qos, bool retain)
 {
     // NOTE:
     // Iterate discovered service table
@@ -159,14 +159,14 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
     }      // publishTable
 }
 
-void Module::Publish(const std::string &topic, const void *data, const size_t datalen,
-      AITT::QoS qos, bool retain)
+void Module::Publish(const std::string &topic, const void *data, const size_t datalen, AittQoS qos,
+      bool retain)
 {
     Publish(topic, data, datalen, std::string(), qos, retain);
 }
 
 void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
-      void *cbdata, AITT::QoS qos)
+      void *cbdata, AittQoS qos)
 {
     std::unique_ptr<TCP::Server> tcpServer;
 
@@ -190,8 +190,8 @@ void *Module::Subscribe(const std::string &topic, const TransportModule::Subscri
     return reinterpret_cast<void *>(handle);
 }
 
-void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb, const void *data,
-      const size_t datalen, void *cbdata, AITT::QoS qos)
+void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+      const void *data, const size_t datalen, void *cbdata, AittQoS qos)
 {
     return nullptr;
 }

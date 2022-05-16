@@ -30,13 +30,13 @@ Module::~Module(void)
 }
 
 void Module::Publish(const std::string &topic, const void *data, const size_t datalen,
-      const std::string &correlation, AITT::QoS qos, bool retain)
+      const std::string &correlation, AittQoS qos, bool retain)
 {
     // TODO
 }
 
-void Module::Publish(const std::string &topic, const void *data, const size_t datalen,
-      AITT::QoS qos, bool retain)
+void Module::Publish(const std::string &topic, const void *data, const size_t datalen, AittQoS qos,
+      bool retain)
 {
     std::lock_guard<std::mutex> publish_table_lock(publish_table_lock_);
 
@@ -59,20 +59,20 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
 }
 
 void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
-      void *cbdata, AITT::QoS qos)
+      void *cbdata, AittQoS qos)
 {
     return nullptr;
 }
 
 void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
-      const void *data, const size_t datalen, void *cbdata, AITT::QoS qos)
+      const void *data, const size_t datalen, void *cbdata, AittQoS qos)
 {
     std::lock_guard<std::mutex> subscribe_table_lock(subscribe_table_lock_);
 
     subscribe_table_[topic] =
           std::make_shared<SubscribeStream>(topic, BuildConfigFromFb(data, datalen));
 
-    subscribe_table_[topic]->Start(qos == AITT::QoS::EXACTLY_ONCE, cbdata);
+    subscribe_table_[topic]->Start(qos == AITT_QOS_EXACTLY_ONCE, cbdata);
 
     return subscribe_table_[topic].get();
 }

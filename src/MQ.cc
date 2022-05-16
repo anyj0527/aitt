@@ -144,8 +144,7 @@ void MQ::Connect(const std::string &host, int port, const std::string &username,
     }
 }
 
-void MQ::SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, MQ::QoS qos,
-      bool retain)
+void MQ::SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, int qos, bool retain)
 {
     int ret = mosquitto_will_set(handle, topic.c_str(), szmsg, msg, qos, retain);
     if (ret != MOSQ_ERR_SUCCESS) {
@@ -236,7 +235,7 @@ void MQ::InvokeCallback(const mosquitto_message *msg, const mosquitto_property *
           ->cb(&mq_msg, msg->topic, msg->payload, msg->payloadlen, (*subscriber_iterator)->cbdata);
 }
 
-void MQ::Publish(const std::string &topic, const void *data, const size_t datalen, MQ::QoS qos,
+void MQ::Publish(const std::string &topic, const void *data, const size_t datalen, int qos,
       bool retain)
 {
     int mid = -1;
@@ -247,8 +246,8 @@ void MQ::Publish(const std::string &topic, const void *data, const size_t datale
     }
 }
 
-void MQ::PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-      MQ::QoS qos, bool retain, const std::string &reply_topic, const std::string &correlation)
+void MQ::PublishWithReply(const std::string &topic, const void *data, const size_t datalen, int qos,
+      bool retain, const std::string &reply_topic, const std::string &correlation)
 {
     int ret;
     int mid = -1;
@@ -273,7 +272,7 @@ void MQ::PublishWithReply(const std::string &topic, const void *data, const size
     }
 }
 
-void MQ::SendReply(MSG *msg, const void *data, const size_t datalen, MQ::QoS qos, bool retain)
+void MQ::SendReply(MSG *msg, const void *data, const size_t datalen, int qos, bool retain)
 {
     RET_IF(msg == nullptr);
 
@@ -311,8 +310,7 @@ void MQ::SendReply(MSG *msg, const void *data, const size_t datalen, MQ::QoS qos
     }
 }
 
-void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata,
-      MQ::QoS qos)
+void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata, int qos)
 {
     int mid = -1;
     int ret = mosquitto_subscribe(handle, &mid, topic.c_str(), qos);

@@ -55,7 +55,7 @@ AITT::~AITT(void)
 }
 
 void AITT::SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
-      AITT::QoS qos, bool retain)
+      AittQoS qos, bool retain)
 {
     return pImpl->SetWillInfo(topic, data, datalen, qos, retain);
 }
@@ -77,13 +77,13 @@ void AITT::Disconnect(void)
 }
 
 void AITT::Publish(const std::string &topic, const void *data, const size_t datalen,
-      AittProtocol protocols, AITT::QoS qos, bool retain)
+      AittProtocol protocols, AittQoS qos, bool retain)
 {
     return pImpl->Publish(topic, data, datalen, protocols, qos, retain);
 }
 
 int AITT::PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-      AittProtocol protocol, AITT::QoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
+      AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
       const std::string &correlation)
 {
     return pImpl->PublishWithReply(topic, data, datalen, protocol, qos, retain, cb, cbdata,
@@ -91,7 +91,7 @@ int AITT::PublishWithReply(const std::string &topic, const void *data, const siz
 }
 
 int AITT::PublishWithReplySync(const std::string &topic, const void *data, const size_t datalen,
-      AittProtocol protocol, AITT::QoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
+      AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
       const std::string &correlation, int timeout_ms)
 {
     return pImpl->PublishWithReplySync(topic, data, datalen, protocol, qos, retain, cb, cbdata,
@@ -99,7 +99,7 @@ int AITT::PublishWithReplySync(const std::string &topic, const void *data, const
 }
 
 AittSubscribeID AITT::Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata,
-      AittProtocol protocols, AITT::QoS qos)
+      AittProtocol protocols, AittQoS qos)
 {
     return pImpl->Subscribe(topic, cb, cbdata, protocols, qos);
 }

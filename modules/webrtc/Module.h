@@ -41,19 +41,19 @@ class Module : public TransportModule {
 
     // TODO: How about regarding topic as service name?
     void Publish(const std::string &topic, const void *data, const size_t datalen,
-          const std::string &correlation, AITT::QoS qos = AITT::QoS::AT_MOST_ONCE,
+          const std::string &correlation, AittQoS qos = AITT_QOS_AT_MOST_ONCE,
           bool retain = false) override;
 
     void Publish(const std::string &topic, const void *data, const size_t datalen,
-          AITT::QoS qos = AITT::QoS::AT_MOST_ONCE, bool retain = false) override;
+          AittQoS qos = AITT_QOS_AT_MOST_ONCE, bool retain = false) override;
 
     // TODO: How about regarding topic as service name?
     void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
-          void *cbdata = nullptr, AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) override;
+          void *cbdata = nullptr, AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
 
-    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb, const void *data,
-          const size_t datalen, void *cbdata = nullptr,
-          AITT::QoS qos = AITT::QoS::AT_MOST_ONCE) override;
+    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+          const void *data, const size_t datalen, void *cbdata = nullptr,
+          AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
 
     void *Unsubscribe(void *handle) override;
 
@@ -76,7 +76,6 @@ class Module : public TransportModule {
   private:
     Config BuildConfigFromFb(const void *data, const size_t data_size);
 
-  private:
     std::map<std::string, std::shared_ptr<PublishStream>> publish_table_;
     std::mutex publish_table_lock_;
     std::map<std::string, std::shared_ptr<SubscribeStream>> subscribe_table_;

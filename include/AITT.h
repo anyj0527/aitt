@@ -29,52 +29,42 @@ namespace aitt {
 
 class API AITT {
   public:
-    // NOTE:
-    // This QoS only works with the AITT_TYPE_MQTT
-    enum QoS : int {
-        AT_MOST_ONCE = 0,   // Fire and forget
-        AT_LEAST_ONCE = 1,  // Receiver is able to receive multiple times
-        EXACTLY_ONCE = 2,   // Receiver only receives exactly once
-    };
-
     static constexpr const char *WILL_LEAVE_NETWORK = "disconnected";
     static constexpr const char *JOIN_NETWORK = "connected";
 
     using SubscribeCallback = std::function<void(MSG *, const void *, const size_t, void *)>;
     using ConnectionCallback = std::function<void(AITT &, int, void *)>;
 
-  public:
     explicit AITT(const std::string &id, const std::string &ip_addr, bool clear_session = false);
     virtual ~AITT(void);
 
-    void SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
-          AITT::QoS qos, bool retain);
+    void SetWillInfo(const std::string &topic, const void *data, const size_t datalen, AittQoS qos,
+          bool retain);
     void SetConnectionCallback(ConnectionCallback cb, void *user_data = nullptr);
     void Connect(const std::string &host = AITT_LOCALHOST, int port = AITT_PORT,
           const std::string &username = std::string(), const std::string &password = std::string());
     void Disconnect(void);
 
     void Publish(const std::string &topic, const void *data, const size_t datalen,
-          AittProtocol protocols = AITT_TYPE_MQTT, AITT::QoS qos = QoS::AT_MOST_ONCE,
+          AittProtocol protocols = AITT_TYPE_MQTT, AittQoS qos = AITT_QOS_AT_MOST_ONCE,
           bool retain = false);
     int PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-          AittProtocol protocol, AITT::QoS qos, bool retain, const SubscribeCallback &cb,
+          AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb,
           void *cbdata, const std::string &correlation);
 
     int PublishWithReplySync(const std::string &topic, const void *data, const size_t datalen,
-          AittProtocol protocol, AITT::QoS qos, bool retain, const SubscribeCallback &cb,
+          AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb,
           void *cbdata, const std::string &correlation, int timeout_ms = 0);
 
     AittSubscribeID Subscribe(const std::string &topic, const SubscribeCallback &cb,
           void *cbdata = nullptr, AittProtocol protocol = AITT_TYPE_MQTT,
-          AITT::QoS qos = QoS::AT_MOST_ONCE);
+          AittQoS qos = AITT_QOS_AT_MOST_ONCE);
     void *Unsubscribe(AittSubscribeID handle);
 
     void SendReply(MSG *msg, const void *data, const int datalen, bool end = true);
 
     // NOTE:
     // Provide utility functions to developers who only be able to access the AITT class
-  public:
     static bool CompareTopic(const std::string &left, const std::string &right);
 
   private:

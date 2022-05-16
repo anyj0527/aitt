@@ -68,9 +68,9 @@ void AITT::Impl::ThreadMain(void)
 }
 
 void AITT::Impl::SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
-      AITT::QoS qos, bool retain)
+      AittQoS qos, bool retain)
 {
-    mq.SetWillInfo(topic, data, datalen, static_cast<MQ::QoS>(qos), retain);
+    mq.SetWillInfo(topic, data, datalen, qos, retain);
 }
 
 void AITT::Impl::SetConnectionCallback(ConnectionCallback cb, void *user_data)
@@ -92,7 +92,7 @@ void AITT::Impl::ConnectionCB(ConnectionCallback cb, void *user_data, int status
 void AITT::Impl::Connect(const std::string &host, int port, const std::string &username,
       const std::string &password)
 {
-    discovery_mq.SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
+    discovery_mq.SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, AITT_QOS_EXACTLY_ONCE, true);
     discovery_mq.Connect(host, port, username, password);
     mq.Connect(host, port, username, password);
 
@@ -103,7 +103,7 @@ void AITT::Impl::Connect(const std::string &host, int port, const std::string &u
         discovery_mq.Unsubscribe(discoveryCallbackHandle);
 
     discoveryCallbackHandle = discovery_mq.Subscribe(DISCOVERY_TOPIC_BASE + "+",
-          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), MQ::EXACTLY_ONCE);
+          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), AITT_QOS_EXACTLY_ONCE);
 }
 
 void AITT::Impl::Disconnect(void)
@@ -135,7 +135,7 @@ void AITT::Impl::Disconnect(void)
         subscribed_list.clear();
     }
 
-    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, MQ::EXACTLY_ONCE, true);
+    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, AITT_QOS_EXACTLY_ONCE, true);
     discovery_mq.Unsubscribe(discoveryCallbackHandle);
     discovery_mq.Disconnect();
     mq.Disconnect();
@@ -150,10 +150,10 @@ void AITT::Impl::ConfigureTransportModule(const std::string &key, const std::str
 }
 
 void AITT::Impl::Publish(const std::string &topic, const void *data, const size_t datalen,
-      AittProtocol protocols, AITT::QoS qos, bool retain)
+      AittProtocol protocols, AittQoS qos, bool retain)
 {
     if ((protocols & AITT_TYPE_MQTT) == AITT_TYPE_MQTT)
-        mq.Publish(topic, data, datalen, static_cast<MQ::QoS>(qos), retain);
+        mq.Publish(topic, data, datalen, qos, retain);
 
     // NOTE:
     // Invoke the publish method of the specified transport module
@@ -167,7 +167,7 @@ void AITT::Impl::Publish(const std::string &topic, const void *data, const size_
 }
 
 void AITT::Impl::PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
-      AITT::QoS qos, bool retain)
+      AittQoS qos, bool retain)
 {
     auto webrtcModule = modules.GetInstance(AITT_TYPE_WEBRTC);
     flexbuffers::Builder fbb;
@@ -186,7 +186,7 @@ void AITT::Impl::PublishWebRtc(const std::string &topic, const void *data, const
 }
 
 AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::SubscribeCallback &cb,
-      void *cbdata, AittProtocol protocol, AITT::QoS qos)
+      void *cbdata, AittProtocol protocol, AittQoS qos)
 {
     SubscribeInfo *info = new SubscribeInfo();
     info->first = protocol;
@@ -219,7 +219,7 @@ AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::Subs
 }
 
 AittSubscribeID AITT::Impl::MQSubscribe(SubscribeInfo *handle, MainLoopHandler *loop_handle,
-      const std::string &topic, const SubscribeCallback &cb, void *cbdata, AITT::QoS qos)
+      const std::string &topic, const SubscribeCallback &cb, void *cbdata, AittQoS qos)
 {
     return mq.Subscribe(
           topic,
@@ -234,7 +234,7 @@ AittSubscribeID AITT::Impl::MQSubscribe(SubscribeInfo *handle, MainLoopHandler *
                     cbdata, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
               MainLoopHandler::AddIdle(loop_handle, idler_cb, nullptr);
           },
-          cbdata, static_cast<MQ::QoS>(qos));
+          cbdata, qos);
 }
 
 void AITT::Impl::DetachedCB(SubscribeCallback cb, MSG msg, void *data, const size_t datalen,
@@ -342,7 +342,7 @@ void AITT::Impl::DiscoveryMessageCallback(MSG *mq, const std::string &topic, con
 }
 
 int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-      AittProtocol protocol, QoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
+      AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
       const std::string &correlation)
 {
     std::string replyTopic = topic + RESPONSE_POSTFIX + std::to_string(reply_id++);
@@ -362,13 +362,12 @@ int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, con
           },
           cbdata, protocol, qos);
 
-    mq.PublishWithReply(topic, data, datalen, static_cast<MQ::QoS>(qos), false, replyTopic,
-          correlation);
+    mq.PublishWithReply(topic, data, datalen, qos, false, replyTopic, correlation);
     return 0;
 }
 
 int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
-      const size_t datalen, AittProtocol protocol, AITT::QoS qos, bool retain,
+      const size_t datalen, AittProtocol protocol, AittQoS qos, bool retain,
       const SubscribeCallback &cb, void *cbdata, const std::string &correlation, int timeout_ms)
 {
     std::string replyTopic = topic + RESPONSE_POSTFIX + std::to_string(reply_id++);
@@ -406,8 +405,7 @@ int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
         subscribed_list.push_back(info);
     }
 
-    mq.PublishWithReply(topic, data, datalen, static_cast<MQ::QoS>(qos), false, replyTopic,
-          correlation);
+    mq.PublishWithReply(topic, data, datalen, qos, false, replyTopic, correlation);
     if (timeout_ms)
         HandleTimeout(timeout_ms, timeout_id, sync_loop, is_timeout);
 
@@ -443,7 +441,7 @@ void AITT::Impl::SendReply(MSG *msg, const void *data, const int datalen, bool e
         msg->IncreaseSequence();
     msg->SetEndSequence(end);
 
-    mq.SendReply(msg, data, datalen, MQ::AT_MOST_ONCE, false);
+    mq.SendReply(msg, data, datalen, AITT_QOS_AT_MOST_ONCE, false);
 }
 
 void AITT::Impl::PublishSubscribeTable(void)
@@ -475,12 +473,12 @@ void AITT::Impl::PublishSubscribeTable(void)
     fbb.Finish();
 
     auto buf = fbb.GetBuffer();
-    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), MQ::EXACTLY_ONCE,
+    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), AITT_QOS_EXACTLY_ONCE,
           true);
 }
 
 void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,
-      const SubscribeCallback &cb, void *cbdata, QoS qos)
+      const SubscribeCallback &cb, void *cbdata, AittQoS qos)
 {
     auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
     return tcpModule->Subscribe(
@@ -499,7 +497,7 @@ void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,
 }
 
 void *AITT::Impl::SubscribeWebRtc(SubscribeInfo *handle, const std::string &topic,
-      const SubscribeCallback &cb, void *cbdata, QoS qos)
+      const SubscribeCallback &cb, void *cbdata, AittQoS qos)
 {
     auto webrtc_module = modules.GetInstance(AITT_TYPE_WEBRTC);
     flexbuffers::Builder fbb;
