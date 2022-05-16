@@ -23,6 +23,7 @@
 #include <cerrno>
 #include <stdexcept>
 
+#include "AittTypes.h"
 #include "log.h"
 
 namespace aitt {
@@ -31,7 +32,7 @@ const std::string MQ::REPLY_SEQUENCE_NUM_KEY = "sequenceNum";
 const std::string MQ::REPLY_IS_END_SEQUENCE_KEY = "isEndSequence";
 
 MQ::MQ(const std::string &id, bool clear_session)
-      : handle(nullptr), keep_alive(60), subscriber_iterator_updated(false)
+      : handle(nullptr), keep_alive(60), subscriber_iterator_updated(false), connect_cb(nullptr)
 {
     do {
         int ret = mosquitto_lib_init();
@@ -83,6 +84,38 @@ MQ::~MQ(void)
         ERR("mosquitto_lib_cleanup() Fail(%s)", mosquitto_strerror(ret));
 }
 
+void MQ::SetConnectionCallback(MQConnectionCallback cb)
+{
+    connect_cb = cb;
+
+    mosquitto_connect_v5_callback_set(handle, ConnectCallback);
+    mosquitto_disconnect_v5_callback_set(handle, DisconnectCallback);
+}
+
+void MQ::ConnectCallback(struct mosquitto *mosq, void *obj, int rc, int flag,
+      const mosquitto_property *props)
+{
+    RET_IF(obj == nullptr);
+    MQ *mq = static_cast<MQ *>(obj);
+
+    INFO("Connected : rc(%d), flag(%d)", rc, flag);
+
+    if (mq->connect_cb)
+        mq->connect_cb(AITT_CONNECTED);
+}
+
+void MQ::DisconnectCallback(struct mosquitto *mosq, void *obj, int rc,
+      const mosquitto_property *props)
+{
+    RET_IF(obj == nullptr);
+    MQ *mq = static_cast<MQ *>(obj);
+
+    INFO("Disconnected : rc(%d)", rc);
+
+    if (mq->connect_cb)
+        mq->connect_cb(AITT_DISCONNECTED);
+}
+
 void MQ::Connect(const std::string &host, int port, const std::string &username,
       const std::string &password)
 {
@@ -124,12 +157,11 @@ void MQ::Disconnect(void)
     mosquitto_will_clear(handle);
 }
 
-void MQ::MessageCallback(mosquitto *handle, void *_mq, const mosquitto_message *msg,
+void MQ::MessageCallback(mosquitto *handle, void *obj, const mosquitto_message *msg,
       const mosquitto_property *props)
 {
-    RET_IF(_mq == nullptr);
-
-    MQ *mq = static_cast<MQ *>(_mq);
+    RET_IF(obj == nullptr);
+    MQ *mq = static_cast<MQ *>(obj);
 
     std::lock_guard<std::recursive_mutex> auto_lock(mq->subscribers_lock);
 

@@ -34,6 +34,10 @@ class AITTTest : public testing::Test {
     void ToggleReady() { ready = true; }
     void ToggleReady2() { ready2 = true; }
 
+    void *subscribeHandle;
+    bool ready;
+    bool ready2;
+
   protected:
     void SetUp() override
     {
@@ -69,15 +73,9 @@ class AITTTest : public testing::Test {
         return TRUE;
     }
 
-  protected:
-    bool ready;
-    bool ready2;
     GMainLoop *mainLoop;
     std::string clientId;
     std::string testTopic;
-
-  public:
-    void *subscribeHandle;
 };
 
 using AITT = aitt::AITT;
@@ -86,6 +84,36 @@ TEST_F(AITTTest, Positive_Create_Anytime)
 {
     try {
         AITT aitt(clientId, MY_IP, true);
+    } catch (std::exception &e) {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+}
+
+TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
+{
+    try {
+        AITT aitt(clientId, MY_IP, true);
+        aitt.SetConnectionCallback(
+              [&](AITT &handle, int status, void *user_data) {
+                  AITTTest *test = static_cast<AITTTest *>(user_data);
+
+                  if (test->ready2) {
+                      EXPECT_EQ(status, AITT_DISCONNECTED);
+                      test->ToggleReady();
+                  } else {
+                      EXPECT_EQ(status, AITT_CONNECTED);
+                      test->ToggleReady2();
+                      handle.Disconnect();
+                  }
+              },
+              this);
+        aitt.Connect();
+
+        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+
+        IterateEventLoop();
+        ASSERT_TRUE(ready);
+        ASSERT_TRUE(ready2);
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
     }

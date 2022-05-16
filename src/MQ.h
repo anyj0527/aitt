@@ -40,12 +40,14 @@ class MQ {
     };
     using SubscribeCallback =
           std::function<void(MSG *, const std::string &topic, const void *, const int, void *)>;
+    using MQConnectionCallback = std::function<void(int)>;
 
     explicit MQ(const std::string &id, bool clear_session = false);
     virtual ~MQ(void);
 
     static bool CompareTopic(const std::string &left, const std::string &right);
 
+    void SetConnectionCallback(MQConnectionCallback cb);
     void Connect(const std::string &host, int port, const std::string &username,
           const std::string &password);
     void SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, MQ::QoS qos,
@@ -69,6 +71,10 @@ class MQ {
         void *cbdata;
     };
 
+    static void ConnectCallback(mosquitto *mosq, void *obj, int rc, int flag,
+          const mosquitto_property *props);
+    static void DisconnectCallback(mosquitto *mosq, void *obj, int rc,
+          const mosquitto_property *props);
     static void MessageCallback(mosquitto *, void *, const mosquitto_message *,
           const mosquitto_property *);
     void InvokeCallback(const mosquitto_message *msg, const mosquitto_property *props);
@@ -82,6 +88,7 @@ class MQ {
     std::vector<SubscribeData *>::iterator subscriber_iterator;
     bool subscriber_iterator_updated;
     std::recursive_mutex subscribers_lock;
+    MQConnectionCallback connect_cb;
 };
 
 }  // namespace aitt

@@ -47,7 +47,7 @@ AITT::AITT(const std::string &id, const std::string &ip_addr, bool clear_session
     if (ip_addr.empty())
         valid_ip = "127.0.0.1";
 
-    pImpl = std::make_unique<AITT::Impl>(this, valid_id, valid_ip, clear_session);
+    pImpl = std::make_unique<AITT::Impl>(*this, valid_id, valid_ip, clear_session);
 }
 
 AITT::~AITT(void)
@@ -58,6 +58,11 @@ void AITT::SetWillInfo(const std::string &topic, const void *data, const size_t 
       AITT::QoS qos, bool retain)
 {
     return pImpl->SetWillInfo(topic, data, datalen, qos, retain);
+}
+
+void AITT::SetConnectionCallback(ConnectionCallback cb, void *user_data)
+{
+    return pImpl->SetConnectionCallback(cb, user_data);
 }
 
 void AITT::Connect(const std::string &host, int port, const std::string &username,

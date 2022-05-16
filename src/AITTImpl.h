@@ -34,12 +34,12 @@ namespace aitt {
 
 class AITT::Impl {
   public:
-    Impl(AITT *parent, const std::string &id, const std::string &ipAddr, bool clearSession);
+    Impl(AITT &parent, const std::string &id, const std::string &ipAddr, bool clearSession);
     virtual ~Impl(void);
 
     void SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
           AITT::QoS qos, bool retain);
-
+    void SetConnectionCallback(ConnectionCallback cb, void *user_data);
     void Connect(const std::string &host, int port, const std::string &username,
           const std::string &password);
     void Disconnect(void);
@@ -71,6 +71,8 @@ class AITT::Impl {
 
     static void DiscoveryMessageCallback(MSG *mq, const std::string &topic, const void *msg,
           const int szmsg, void *cbdata);
+
+    void ConnectionCB(ConnectionCallback cb, void *user_data, int status);
     AittSubscribeID MQSubscribe(SubscribeInfo *info, MainLoopHandler *loop_handle,
           const std::string &topic, const SubscribeCallback &cb, void *cbdata, AITT::QoS qos);
     void DetachedCB(SubscribeCallback cb, MSG mq_msg, void *data, const size_t datalen,
@@ -86,6 +88,7 @@ class AITT::Impl {
     void PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
           AITT::QoS qos, bool retain);
 
+    AITT &public_api;
     std::string id_;
     std::string mqtt_broker_ip_;
     int mqtt_broker_port_;

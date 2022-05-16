@@ -41,6 +41,7 @@ class API AITT {
     static constexpr const char *JOIN_NETWORK = "connected";
 
     using SubscribeCallback = std::function<void(MSG *, const void *, const size_t, void *)>;
+    using ConnectionCallback = std::function<void(AITT &, int, void *)>;
 
   public:
     explicit AITT(const std::string &id, const std::string &ip_addr, bool clear_session = false);
@@ -48,7 +49,7 @@ class API AITT {
 
     void SetWillInfo(const std::string &topic, const void *data, const size_t datalen,
           AITT::QoS qos, bool retain);
-
+    void SetConnectionCallback(ConnectionCallback cb, void *user_data = nullptr);
     void Connect(const std::string &host = AITT_LOCALHOST, int port = AITT_PORT,
           const std::string &username = std::string(), const std::string &password = std::string());
     void Disconnect(void);

@@ -27,6 +27,11 @@ enum AittProtocol {
     AITT_TYPE_WEBRTC = (0x1 << 4),  // Publish message to peers using the WEBRTC
 };
 
+enum AittConnectionState {
+    AITT_DISCONNECTED = 0,  // The connection is disconnected.
+    AITT_CONNECTED = 1,     // A connection was successfully established to the mqtt broker.
+};
+
 #ifdef TIZEN
 #include <tizen.h>
 #define TIZEN_ERROR_AITT -0x04020000

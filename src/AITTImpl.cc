@@ -32,8 +32,9 @@
 
 namespace aitt {
 
-AITT::Impl::Impl(AITT *parent, const std::string &id, const std::string &ipAddr, bool clearSession)
-      : id_(id),
+AITT::Impl::Impl(AITT &parent, const std::string &id, const std::string &ipAddr, bool clearSession)
+      : public_api(parent),
+        id_(id),
         mq(id, clearSession),
         discovery_mq(id + "d", true),
         reply_id(0),
@@ -70,6 +71,19 @@ void AITT::Impl::SetWillInfo(const std::string &topic, const void *data, const s
       AITT::QoS qos, bool retain)
 {
     mq.SetWillInfo(topic, data, datalen, static_cast<MQ::QoS>(qos), retain);
+}
+
+void AITT::Impl::SetConnectionCallback(ConnectionCallback cb, void *user_data)
+{
+    mq.SetConnectionCallback(
+          std::bind(&Impl::ConnectionCB, this, cb, user_data, std::placeholders::_1));
+}
+
+void AITT::Impl::ConnectionCB(ConnectionCallback cb, void *user_data, int status)
+{
+    RET_IF(cb == nullptr);
+
+    cb(public_api, status, user_data);
 }
 
 void AITT::Impl::Connect(const std::string &host, int port, const std::string &username,
