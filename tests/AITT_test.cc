@@ -89,6 +89,37 @@ TEST_F(AITTTest, Positive_Create_Anytime)
     }
 }
 
+TEST_F(AITTTest, UnsetConnectionCallback_P_Anytime)
+{
+    try {
+        AITT aitt(clientId, MY_IP, true);
+        aitt.SetConnectionCallback(
+              [&](AITT &handle, int status, void *user_data) {
+                  AITTTest *test = static_cast<AITTTest *>(user_data);
+
+                  if (test->ready) {
+                      FAIL() << "Should not be called";
+                  } else {
+                      EXPECT_EQ(status, AITT_CONNECTED);
+                      test->ToggleReady();
+                      handle.SetConnectionCallback(nullptr, nullptr);
+                      handle.Disconnect();
+                  }
+              },
+              this);
+        aitt.Connect();
+
+        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+
+        IterateEventLoop();
+        sleep(1);
+        ASSERT_FALSE(ready2);
+        ASSERT_TRUE(ready);
+    } catch (std::exception &e) {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+}
+
 TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
 {
     try {

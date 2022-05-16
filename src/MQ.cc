@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <stdexcept>
+#include <thread>
 
 #include "AittTypes.h"
 #include "log.h"
@@ -88,8 +89,15 @@ void MQ::SetConnectionCallback(MQConnectionCallback cb)
 {
     connect_cb = cb;
 
-    mosquitto_connect_v5_callback_set(handle, ConnectCallback);
-    mosquitto_disconnect_v5_callback_set(handle, DisconnectCallback);
+    std::thread([&]() {
+        if (cb) {
+            mosquitto_connect_v5_callback_set(handle, ConnectCallback);
+            mosquitto_disconnect_v5_callback_set(handle, DisconnectCallback);
+        } else {
+            mosquitto_connect_v5_callback_set(handle, nullptr);
+            mosquitto_disconnect_v5_callback_set(handle, nullptr);
+        }
+    }).detach();
 }
 
 void MQ::ConnectCallback(struct mosquitto *mosq, void *obj, int rc, int flag,

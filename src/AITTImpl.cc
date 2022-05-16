@@ -75,8 +75,11 @@ void AITT::Impl::SetWillInfo(const std::string &topic, const void *data, const s
 
 void AITT::Impl::SetConnectionCallback(ConnectionCallback cb, void *user_data)
 {
-    mq.SetConnectionCallback(
-          std::bind(&Impl::ConnectionCB, this, cb, user_data, std::placeholders::_1));
+    if (cb == nullptr)
+        mq.SetConnectionCallback(nullptr);
+    else
+        mq.SetConnectionCallback(
+              std::bind(&Impl::ConnectionCB, this, cb, user_data, std::placeholders::_1));
 }
 
 void AITT::Impl::ConnectionCB(ConnectionCallback cb, void *user_data, int status)
