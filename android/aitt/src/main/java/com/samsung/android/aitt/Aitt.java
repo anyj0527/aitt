@@ -319,12 +319,20 @@ public class Aitt implements AutoCloseable {
     }
 
     private void messageCallback(String topic, byte[] payload) {
-        if (topic.compareTo(JAVA_SPECIFIC_DISCOVERY_TOPIC) == 0) {
-            discoveryMessageCallback(payload);
-        } else {
-            AittMessage message = new AittMessage(payload);
-            message.setTopic(topic);
-            messageReceived(message);
+        try {
+            if (topic.compareTo(JAVA_SPECIFIC_DISCOVERY_TOPIC) == 0) {
+                if (payload.length <= 0) {
+                    Log.e(TAG, "Invlaid payload, Ignore");
+                    return;
+                }
+                discoveryMessageCallback(payload);
+            } else {
+                AittMessage message = new AittMessage(payload);
+                message.setTopic(topic);
+                messageReceived(message);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -351,9 +359,6 @@ public class Aitt implements AutoCloseable {
             },
            }
         */
-        if (payload.length <= 0) {
-            throw new IllegalArgumentException("Invalid payload");
-        }
         try {
             ByteBuffer buffer = ByteBuffer.wrap(payload);
             FlexBuffers.Map map = FlexBuffers.getRoot(buffer).asMap();
