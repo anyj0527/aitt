@@ -39,6 +39,8 @@ public class Aitt implements AutoCloseable {
     private static final String JAVA_SPECIFIC_DISCOVERY_TOPIC = "/java/aitt/discovery/";
     private static final String JOIN_NETWORK = "connected";
     private static final String RESPONSE_POSTFIX = "_AittRe_";
+    private static final String INVALID_TOPIC = "Invalid topic";
+    private static final String STATUS = "status";
 
     static {
         System.loadLibrary("aitt-android");
@@ -149,7 +151,7 @@ public class Aitt implements AutoCloseable {
 
     public void publish(String topic, byte[] message, EnumSet<Protocol> protocols, QoS qos, boolean retain) {
         if (topic == null || topic.isEmpty()) {
-            throw new IllegalArgumentException("Invalid topic");
+            throw new IllegalArgumentException(INVALID_TOPIC);
         }
         if (protocols.isEmpty()) {
             throw new IllegalArgumentException("Invalid protocols");
@@ -167,21 +169,7 @@ public class Aitt implements AutoCloseable {
                         Protocol protocol = portTable.portMap.get(port).first;
                         Object transportHandler = portTable.portMap.get(port).second;
                         if (protocol == Protocol.WEBRTC) {
-                            WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.Message : WebRTC.DataType.VideoFrame;
-                            WebRTC webrtcHandler = null;
-                            if (transportHandler == null) {
-                                webrtcHandler = new WebRTC(dataType, appContext);
-                                transportHandler = webrtcHandler;
-                                portTable.portMap.replace(port, new Pair<>(Protocol.WEBRTC, transportHandler));
-                                webrtcHandler.connect(ip, port);
-                            } else {
-                                webrtcHandler = (WebRTC) transportHandler;
-                            }
-                            if (dataType == WebRTC.DataType.Message) {
-                                webrtcHandler.sendMessageData(message);
-                            } else if (dataType == WebRTC.DataType.VideoFrame) {
-                                webrtcHandler.sendVideoData(message, frameWidth, frameHeight);
-                            }
+                            sendData(portTable, topic, transportHandler, port, message);
                         } else {
                             int proto = protocolsToInt(protocols);
                             publishJNI(instance, topic, message, message.length, proto, qos.ordinal(), retain);
@@ -192,6 +180,24 @@ public class Aitt implements AutoCloseable {
         } catch (Exception e) {
             e.printStackTrace();
             Log.e(TAG, "Couldnt publish to AITT C++");
+        }
+    }
+
+    private void sendData(PortTable portTable, String topic, Object transportHandler, int port, byte[] message) {
+        WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.Message : WebRTC.DataType.VideoFrame;
+        WebRTC webrtcHandler = null;
+        if (transportHandler == null) {
+            webrtcHandler = new WebRTC(dataType, appContext);
+            transportHandler = webrtcHandler;
+            portTable.portMap.replace(port, new Pair<>(Protocol.WEBRTC, transportHandler));
+            webrtcHandler.connect(ip, port);
+        } else {
+            webrtcHandler = (WebRTC) transportHandler;
+        }
+        if (dataType == WebRTC.DataType.Message) {
+            webrtcHandler.sendMessageData(message);
+        } else if (dataType == WebRTC.DataType.VideoFrame) {
+            webrtcHandler.sendVideoData(message, frameWidth, frameHeight);
         }
     }
 
@@ -207,7 +213,7 @@ public class Aitt implements AutoCloseable {
 
     public void subscribe(String topic, SubscribeCallback callback, EnumSet<Protocol> protocols, QoS qos) {
         if (topic == null || topic.isEmpty()) {
-            throw new IllegalArgumentException("Invalid topic");
+            throw new IllegalArgumentException(INVALID_TOPIC);
         }
         if (callback == null) {
             throw new IllegalArgumentException("Invalid callback");
@@ -222,7 +228,6 @@ public class Aitt implements AutoCloseable {
                     message.setTopic(topic);
                     messageReceived(message);
                 };
-
                 WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.Message : WebRTC.DataType.VideoFrame;
                 WebRTCServer ws = new WebRTCServer(appContext, dataType, cb);
                 int serverPort = ws.start();
@@ -232,23 +237,7 @@ public class Aitt implements AutoCloseable {
                 synchronized (this) {
                     subscribeMap.put(topic, new Pair(Protocol.WEBRTC, ws));
                 }
-
-                FlexBuffersBuilder fbb = new FlexBuffersBuilder(ByteBuffer.allocate(512));
-                {
-                    int smap = fbb.startMap();
-                    fbb.putString("status", JOIN_NETWORK);
-                    fbb.putString("host", this.ip);
-                    {
-                        int smap1 = fbb.startMap();
-                        fbb.putInt("protocol", Protocol.WEBRTC.value);
-                        fbb.putInt("port", serverPort);
-                        fbb.endMap(topic, smap1);
-                    }
-                    fbb.endMap(null, smap);
-                }
-                ByteBuffer buffer = fbb.finish();
-                byte[] data = new byte[buffer.remaining()];
-                buffer.get(data, 0, data.length);
+                byte[] data = wrapPublishData(topic, serverPort);
                 publishJNI(instance, JAVA_SPECIFIC_DISCOVERY_TOPIC, data, data.length, Protocol.MQTT.value, QoS.EXACTLY_ONCE.ordinal(), true);
             } else {
                 int proto = protocolsToInt(protocols);
@@ -259,6 +248,30 @@ public class Aitt implements AutoCloseable {
             e.printStackTrace();
             Log.e(TAG, "Couldnt subscribe to AITT C++");
         }
+        addCallBackToSubscribeMap(topic, callback);
+    }
+
+    private byte[] wrapPublishData(String topic, int serverPort) {
+        FlexBuffersBuilder fbb = new FlexBuffersBuilder(ByteBuffer.allocate(512));
+        {
+            int smap = fbb.startMap();
+            fbb.putString(STATUS, JOIN_NETWORK);
+            fbb.putString("host", this.ip);
+            {
+                int smap1 = fbb.startMap();
+                fbb.putInt("protocol", Protocol.WEBRTC.value);
+                fbb.putInt("port", serverPort);
+                fbb.endMap(topic, smap1);
+            }
+            fbb.endMap(null, smap);
+        }
+        ByteBuffer buffer = fbb.finish();
+        byte[] data = new byte[buffer.remaining()];
+        buffer.get(data, 0, data.length);
+        return data;
+    }
+
+    private void addCallBackToSubscribeMap(String topic, SubscribeCallback callback) {
         synchronized (this) {
             try {
                 ArrayList<SubscribeCallback> cbList = subscribeCallbacks.get(topic);
@@ -282,7 +295,7 @@ public class Aitt implements AutoCloseable {
 
     public void unsubscribe(String topic) {
         if (topic == null || topic.isEmpty()) {
-            throw new IllegalArgumentException("Invalid topic");
+            throw new IllegalArgumentException(INVALID_TOPIC);
         }
 
         boolean isRemoved = false;
@@ -363,7 +376,7 @@ public class Aitt implements AutoCloseable {
             ByteBuffer buffer = ByteBuffer.wrap(payload);
             FlexBuffers.Map map = FlexBuffers.getRoot(buffer).asMap();
             String host = map.get("host").asString();
-            String status = map.get("status").asString();
+            String status = map.get(STATUS).asString();
             if (status != null && status.compareTo(WILL_LEAVE_NETWORK) == 0) {
                 synchronized (this) {
                     for (String _topic : publishTable.keySet()) {
@@ -379,7 +392,7 @@ public class Aitt implements AutoCloseable {
             FlexBuffers.KeyVector topics = map.keys();
             for (int i = 0; i < topics.size(); i++) {
                 String _topic = topics.get(i).toString();
-                if (_topic.compareTo("host") == 0 || _topic.compareTo("status") == 0) {
+                if (_topic.compareTo("host") == 0 || _topic.compareTo(STATUS) == 0) {
                     continue;
                 }
 
