@@ -23,6 +23,13 @@ ADD_TEST(
 )
 
 ###########################################################################
+FILE(GLOB AITT_MANUAL_SRC *_manualtest.cc)
+ADD_EXECUTABLE(${AITT_UT}_manual ${AITT_MANUAL_SRC})
+TARGET_LINK_LIBRARIES(${AITT_UT}_manual Threads::Threads ${UT_NEEDS_LIBRARIES} ${PROJECT_NAME})
+
+INSTALL(TARGETS ${AITT_UT}_manual DESTINATION ${AITT_TEST_BINDIR})
+
+###########################################################################
 AUX_SOURCE_DIRECTORY(../mock MOCK_SRC)
 ADD_EXECUTABLE(${AITT_UT}_mq MQ_test.cc ${MOCK_SRC} $<TARGET_OBJECTS:MQ_OBJ>)
 TARGET_LINK_LIBRARIES(${AITT_UT}_mq ${UT_NEEDS_LIBRARIES} Threads::Threads ${AITT_NEEDS_LIBRARIES})

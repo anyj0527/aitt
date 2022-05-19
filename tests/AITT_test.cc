@@ -29,6 +29,8 @@
 #define MY_IP "127.0.0.1"
 #define SLEEP_MS 1
 
+using AITT = aitt::AITT;
+
 class AITTTest : public testing::Test {
   public:
     void ToggleReady() { ready = true; }
@@ -77,8 +79,6 @@ class AITTTest : public testing::Test {
     std::string clientId;
     std::string testTopic;
 };
-
-using AITT = aitt::AITT;
 
 TEST_F(AITTTest, Positive_Create_Anytime)
 {
@@ -555,40 +555,4 @@ TEST_F(AITTTest, WillSet_N_Anytime)
               aitt_will.Disconnect();
           },
           std::exception);
-}
-
-TEST_F(AITTTest, WillSet_P)
-{
-    try {
-        AITT aitt(clientId, MY_IP, true);
-        aitt.Connect();
-        aitt.Subscribe(
-              "test/AITT_will",
-              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
-                  AITTTest *test = static_cast<AITTTest *>(cbdata);
-                  test->ToggleReady();
-                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
-              },
-              static_cast<void *>(this));
-
-        int pid = fork();
-        if (pid == 0) {
-            AITT aitt_will("test_will_AITT", MY_IP, true);
-            aitt_will.SetWillInfo("test/AITT_will", TEST_MSG, sizeof(TEST_MSG),
-                  AITT_QOS_AT_LEAST_ONCE, false);
-            aitt_will.Connect();
-            sleep(2);
-            // Do not call aitt_will.Disconnect()
-        } else {
-            sleep(1);
-            kill(pid, SIGKILL);
-
-            g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
-            IterateEventLoop();
-
-            ASSERT_TRUE(ready);
-        }
-    } catch (std::exception &e) {
-        FAIL() << "Unexpected exception: " << e.what();
-    }
 }
