@@ -20,17 +20,20 @@ import static org.junit.Assert.assertNotNull;
 import android.content.Context;
 
 import androidx.test.core.app.ApplicationProvider;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.robolectric.RobolectricTestRunner;
+import org.robolectric.annotation.Config;
 
 import java.util.EnumSet;
-
-@RunWith(AndroidJUnit4.class)
+@RunWith(RobolectricTestRunner.class)
+@Config(shadows = ShadowAitt.class)
 public class AittUnitTest {
    private String id = "id101";
    private String ip = "127.0.0.1";
+   @Mock
    private Context appContext = ApplicationProvider.getApplicationContext();
    private String brokerIp = "192.168.0.1";
    private int port = 1803;
@@ -55,6 +58,13 @@ public class AittUnitTest {
    public void testInitializeInvalidId() {
       String _id = "";
       Aitt aitt = new Aitt(appContext, _id);
+      aitt.close();
+   }
+
+   @Test(expected = IllegalArgumentException.class)
+   public void testInitializeInvalidContext() {
+      String _id = "";
+      Aitt aitt = new Aitt(null, _id);
       aitt.close();
    }
 

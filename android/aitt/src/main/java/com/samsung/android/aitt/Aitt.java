@@ -42,8 +42,14 @@ public class Aitt implements AutoCloseable {
     private static final String INVALID_TOPIC = "Invalid topic";
     private static final String STATUS = "status";
 
+
     static {
-        System.loadLibrary("aitt-android");
+        try {
+            System.loadLibrary("aitt-android");
+        }catch (UnsatisfiedLinkError e){
+            // only ignore exception in non-android env
+            if ("Dalvik".equals(System.getProperty("java.vm.name"))) throw e;
+        }
     }
     private HashMap<String, ArrayList<SubscribeCallback>> subscribeCallbacks = new HashMap<>();
     private HashMap<String, HostTable> publishTable = new HashMap<>();
@@ -478,10 +484,14 @@ public class Aitt implements AutoCloseable {
     @Override
     public void close() {
         synchronized (this) {
-            subscribeCallbacks.clear();
-            subscribeCallbacks = null;
-            aittSubId.clear();
-            aittSubId = null;
+            if(subscribeCallbacks!=null) {
+                subscribeCallbacks.clear();
+                subscribeCallbacks = null;
+            }
+            if(aittSubId!=null) {
+                aittSubId.clear();
+                aittSubId = null;
+            }
         }
     }
 

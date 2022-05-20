@@ -46,6 +46,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            testCoverageEnabled = true
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -56,6 +59,9 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
         pickFirst 'lib/armeabi-v7a/libaitt.so'
     }
     libraryVariants.all { variant ->
@@ -63,9 +69,21 @@ android {
             outputFileName = "${archivesBaseName}-${defaultConfig.versionName}.aar"
         }
     }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            jacoco {
+                includeNoLocationClasses = true
+                excludes = ['jdk.internal.*']
+            }
+        }
+    }
 }
 
 dependencies {
+    implementation 'androidx.test:core:1.4.0'
     compileOnly project(":android:flatbuffers")
     compileOnly project(":android:mosquitto")
 
@@ -75,7 +93,8 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'modules/webrtc')
     implementation project(path: ':android:modules:webrtc')
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    testImplementation 'org.mockito:mockito-core:2.25.0'
+    testImplementation 'org.robolectric:robolectric:4.8.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 }
 
@@ -119,3 +138,27 @@ preBuild.dependsOn(unzipFlatBuffers)
 preBuild.dependsOn(unzipMosquitto)
 preBuild.dependsOn ":android:flatbuffers:build"
 preBuild.dependsOn ":android:mosquitto:build"
+
+apply plugin: 'jacoco'
+
+task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+
+    def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*', 'android/**/*.*']
+    def debugTree = fileTree(dir : "${buildDir}/intermediates/javac/debug/classes/com/samsung/android/aitt", excludes: fileFilter)
+
+    def mainSrc = "${project.projectDir}/src/main/java"
+
+    getSourceDirectories().setFrom(files([mainSrc]))
+    getClassDirectories().setFrom(files([debugTree]))
+    getExecutionData().setFrom(fileTree(dir: "$buildDir", includes: [
+            "jacoco/testDebugUnitTest.exec",
+            "outputs/code-coverage/connected/*coverage.ec"
+    ]))
+}
+
+build.dependsOn jacocoTestReport
