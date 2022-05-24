@@ -38,7 +38,7 @@ public class WebRTCServer {
         this.dataCallback = dataCallback;
     }
 
-    // Returns Port Number
+    // Returns Port Number on success and -1 on Failure
     public int start(){
         try {
             serverSocket = new ServerSocket(0);
