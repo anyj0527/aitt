@@ -214,7 +214,7 @@ AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::Subs
         subscribed_list.push_back(info);
     }
 
-    DBG("Subscribe topic(%s) : %p", topic.c_str(), info);
+    INFO("Subscribe topic(%s) : %p", topic.c_str(), info);
     return reinterpret_cast<AittSubscribeID>(info);
 }
 
@@ -250,6 +250,7 @@ void AITT::Impl::DetachedCB(SubscribeCallback cb, MSG msg, void *data, const siz
 
 void *AITT::Impl::Unsubscribe(AittSubscribeID subscribe_id)
 {
+    INFO("[%s] %p", __func__, subscribe_id);
     SubscribeInfo *info = reinterpret_cast<SubscribeInfo *>(subscribe_id);
 
     std::unique_lock<std::mutex> lock(subscribed_list_mutex_);
@@ -272,7 +273,7 @@ void *AITT::Impl::Unsubscribe(AittSubscribeID subscribe_id)
         break;
     }
     case AITT_TYPE_WEBRTC: {
-        auto webrtcModule = modules.GetInstance(AITT_TYPE_MQTT);
+        auto webrtcModule = modules.GetInstance(AITT_TYPE_WEBRTC);
         cbdata = webrtcModule->Unsubscribe(found_info->second);
         break;
     }

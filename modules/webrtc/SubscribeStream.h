@@ -32,7 +32,6 @@ class SubscribeStream {
             config_(config),
             server_(std::make_shared<MqttServer>(config)),
             room_(std::make_shared<WebRtcRoom>(config.GetRoomId())),
-            prepared_stream_(nullptr),
             is_track_added_(false),
             display_object_(nullptr){};
     ~SubscribeStream();
@@ -43,7 +42,6 @@ class SubscribeStream {
     void SetSignalingServerCallbacks(void);
     void SetRoomCallbacks(void);
     void SetWebRtcStreamCallbacks(WebRtcPeer &peer);
-    void PrepareStream(bool need_display);
 
   private:
     static void OnSignalingServerConnectionStateChanged(IfaceServer::ConnectionState state,
@@ -65,8 +63,6 @@ class SubscribeStream {
     Config config_;
     std::shared_ptr<MqttServer> server_;
     std::shared_ptr<WebRtcRoom> room_;
-    std::mutex prepared_stream_lock_;
-    std::shared_ptr<WebRtcStream> prepared_stream_;
     bool is_track_added_;
     void *display_object_;
 };

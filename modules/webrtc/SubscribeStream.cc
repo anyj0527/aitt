@@ -25,8 +25,6 @@ SubscribeStream::~SubscribeStream()
 
 void SubscribeStream::Start(bool need_display, void *display_object)
 {
-    prepared_stream_ = std::make_shared<WebRtcStream>();
-    prepared_stream_->Create(false, need_display);
     display_object_ = display_object;
     is_track_added_ = need_display;
     SetSignalingServerCallbacks();
@@ -36,14 +34,6 @@ void SubscribeStream::Start(bool need_display, void *display_object)
     } catch (const std::exception &e) {
         ERR("Failed to start Subscribe stream %s", e.what());
     }
-}
-
-void SubscribeStream::PrepareStream(bool need_display)
-{
-    std::lock_guard<std::mutex> prepared_stream_lock(prepared_stream_lock_);
-    prepared_stream_ = std::make_shared<WebRtcStream>();
-    prepared_stream_->Create(false, need_display);
-    prepared_stream_->Start();
 }
 
 void SubscribeStream::SetSignalingServerCallbacks(void)
@@ -116,13 +106,9 @@ void SubscribeStream::OnPeerJoined(const std::string &peer_id, SubscribeStream &
     try {
         WebRtcPeer &peer = subscribe_stream.room_->GetPeer(peer_id);
 
-        std::unique_lock<std::mutex> prepared_stream_lock(subscribe_stream.prepared_stream_lock_);
-        auto prepared_stream = subscribe_stream.prepared_stream_;
-        subscribe_stream.prepared_stream_ = nullptr;
-        prepared_stream_lock.unlock();
-
-        peer.SetWebRtcStream(prepared_stream);
-        peer.GetWebRtcStream()->Start();
+        auto webrtc_subscribe_stream = peer.GetWebRtcStream();
+        webrtc_subscribe_stream->Create(false, subscribe_stream.is_track_added_);
+        webrtc_subscribe_stream->Start();
         subscribe_stream.SetWebRtcStreamCallbacks(peer);
     } catch (std::out_of_range &e) {
         ERR("Wired %s", e.what());
