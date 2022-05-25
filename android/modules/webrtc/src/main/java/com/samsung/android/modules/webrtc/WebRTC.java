@@ -59,7 +59,6 @@ import java.util.concurrent.TimeUnit;
 
 public class WebRTC {
     private static final String TAG = "WebRTC";
-    private static final int RC_CALL = 111;
     public static final String VIDEO_TRACK_ID = "ARDAMSv0";
 
     private java.net.Socket socket;
@@ -76,7 +75,6 @@ public class WebRTC {
     private SDPThread sdpThread;
 
     private EglBase mRootEglBase;
-    private SurfaceTextureHelper mSurfaceTextureHelper;
     private Context appContext;
     private DataChannel localDataChannel;
     private FrameVideoCapturer videoCapturer;
