@@ -19,7 +19,7 @@
 #include <flatbuffers/flexbuffers.h>
 
 #include "Config.h"
-#include "log.h"
+#include "aitt_internal.h"
 
 Module::Module(const std::string &ip)
 {

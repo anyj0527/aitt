@@ -16,7 +16,7 @@
 
 #include "WebRtcStream.h"
 
-#include "log.h"
+#include "aitt_internal.h"
 
 WebRtcStream::~WebRtcStream()
 {

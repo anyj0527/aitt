@@ -18,7 +18,7 @@
 #include <memory>
 
 #include "AITTImpl.h"
-#include "log.h"
+#include "aitt_internal.h"
 
 namespace aitt {
 

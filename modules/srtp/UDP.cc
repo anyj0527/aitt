@@ -16,7 +16,7 @@
 #include "UDP.h"
 
 #include <arpa/inet.h>
-#include <log.h>
+#include <aitt_internal.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>

@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "PublishStream.h"
 
 #include <sys/time.h>
 
 #include "WebRtcEventHandler.h"
+#include "aitt_internal.h"
 
 PublishStream::~PublishStream()
 {
@@ -38,8 +38,8 @@ void PublishStream::PrepareStream(void)
     prepared_stream_ = std::make_shared<WebRtcStream>();
     prepared_stream_->Create(true, false);
     prepared_stream_->AttachCameraSource();
-    auto on_stream_state_changed_prepared_cb = std::bind(OnStreamStateChangedPrepared,
-          std::placeholders::_1, std::ref(*this));
+    auto on_stream_state_changed_prepared_cb =
+          std::bind(OnStreamStateChangedPrepared, std::placeholders::_1, std::ref(*this));
     prepared_stream_->GetEventHandler().SetOnStateChangedCb(on_stream_state_changed_prepared_cb);
     prepared_stream_->Start();
 }
@@ -137,12 +137,12 @@ void PublishStream::OnPeerJoined(const std::string &peer_id, PublishStream &publ
             peer.SetWebRtcStream(prepared_stream);
             publish_stream.SetWebRtcStreamCallbacks(peer);
             publish_stream.server_->SendMessage(peer.getId(),
-                peer.GetWebRtcStream()->GetPreparedLocalDescription());
+                  peer.GetWebRtcStream()->GetPreparedLocalDescription());
             prepared_stream->SetPreparedLocalDescription("");
         } catch (std::exception &e) {
             ERR("Failed to start stream for peer %s", e.what());
         }
-        //TODO why we can't prepare more sources?
+        // TODO why we can't prepare more sources?
 
     } catch (std::exception &e) {
         ERR("Wired %s", e.what());

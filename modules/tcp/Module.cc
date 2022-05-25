@@ -18,7 +18,7 @@
 #include <unistd.h>
 
 #include "Definitions.h"
-#include "log.h"
+#include "aitt_internal.h"
 
 /*
  * P2P Data Packet Definition

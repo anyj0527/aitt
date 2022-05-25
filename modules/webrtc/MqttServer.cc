@@ -16,7 +16,7 @@
 
 #include "MqttServer.h"
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #define MQTT_HANDLER_DEFAULT_QOS 2
 

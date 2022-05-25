@@ -17,7 +17,7 @@
 #include <TCPServer.h>
 #include <getopt.h>
 #include <glib.h>
-#include <log.h>
+#include <aitt_internal.h>
 
 #include <functional>
 #include <iostream>

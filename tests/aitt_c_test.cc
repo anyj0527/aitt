@@ -18,7 +18,7 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #define LOCAL_IP "127.0.0.1"
 #define TEST_C_TOPIC "test/topic_c"

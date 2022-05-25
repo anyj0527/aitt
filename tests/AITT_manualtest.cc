@@ -18,7 +18,7 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #define TEST_MSG "This is my test message"
 #define LOCAL_IP "127.0.0.1"

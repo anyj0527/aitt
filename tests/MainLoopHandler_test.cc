@@ -23,7 +23,7 @@
 #include <cstdlib>
 #include <thread>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 class MainLoopTest : public testing::Test {
   protected:

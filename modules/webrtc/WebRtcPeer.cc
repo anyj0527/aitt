@@ -17,6 +17,34 @@
 #include "WebRtcPeer.h"
 
 #include "WebRtcMessage.h"
+#include "aitt_internal.h"
+
+WebRtcPeer::WebRtcPeer(const std::string &peer_id)
+      : local_id_(peer_id), webrtc_stream_(std::make_shared<WebRtcStream>())
+{
+    DBG("%s", __func__);
+}
+
+WebRtcPeer::~WebRtcPeer()
+{
+    webrtc_stream_ = nullptr;
+    DBG("%s removed", local_id_.c_str());
+}
+
+std::shared_ptr<WebRtcStream> WebRtcPeer::GetWebRtcStream(void) const
+{
+    return webrtc_stream_;
+}
+
+void WebRtcPeer::SetWebRtcStream(std::shared_ptr<WebRtcStream> webrtc_stream)
+{
+    webrtc_stream_ = webrtc_stream;
+}
+
+std::string WebRtcPeer::getId(void) const
+{
+    return local_id_;
+}
 
 void WebRtcPeer::HandleMessage(const std::string &message)
 {

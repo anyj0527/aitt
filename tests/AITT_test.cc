@@ -22,7 +22,7 @@
 
 #include <thread>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #define TEST_MSG "This is my test message"
 #define TEST_MSG2 "This message is going to be delivered through a specified AittProtocol"

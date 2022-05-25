@@ -16,7 +16,7 @@
 #include <UDP.h>
 #include <getopt.h>
 #include <glib.h>
-#include <log.h>
+#include <aitt_internal.h>
 #include <unistd.h>
 
 #include <functional>

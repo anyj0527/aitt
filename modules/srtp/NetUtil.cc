@@ -27,7 +27,7 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 namespace aitt {
 

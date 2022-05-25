@@ -20,23 +20,15 @@
 #include <string>
 
 #include "WebRtcStream.h"
-#include "log.h"
 
 class WebRtcPeer {
   public:
-    WebRtcPeer() = delete;
-    WebRtcPeer(const std::string &peer_id)
-          : local_id_(peer_id), webrtc_stream_(std::make_shared<WebRtcStream>())
-    {
-        DBG("%s", __func__);
-    };
-    ~WebRtcPeer() {
-      webrtc_stream_ = nullptr;
-      DBG("%s removed", local_id_.c_str());
-    };
-    std::shared_ptr<WebRtcStream> GetWebRtcStream(void) const { return webrtc_stream_; };
-    void SetWebRtcStream(std::shared_ptr<WebRtcStream> webrtc_stream) { webrtc_stream_ = webrtc_stream; };
-    std::string getId(void) const { return local_id_; };
+    explicit WebRtcPeer(const std::string &peer_id);
+    ~WebRtcPeer();
+
+    std::shared_ptr<WebRtcStream> GetWebRtcStream(void) const;
+    void SetWebRtcStream(std::shared_ptr<WebRtcStream> webrtc_stream);
+    std::string getId(void) const;
     void HandleMessage(const std::string &message);
 
   private:

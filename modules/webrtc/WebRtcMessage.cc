@@ -16,7 +16,7 @@
 
 #include <json-glib/json-glib.h>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #include "WebRtcMessage.h"
 

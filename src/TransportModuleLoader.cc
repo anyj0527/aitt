@@ -18,7 +18,7 @@
 
 #include <dlfcn.h>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 namespace aitt {
 

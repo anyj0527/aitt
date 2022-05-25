@@ -19,7 +19,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 WebRtcRoom::~WebRtcRoom()
 {

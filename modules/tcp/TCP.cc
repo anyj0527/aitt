@@ -26,7 +26,7 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 TCP::TCP(const std::string &host, unsigned short port) : handle(-1), addrlen(0), addr(nullptr)
 {

@@ -17,7 +17,7 @@
 
 #include <glib.h>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 namespace aitt {
 

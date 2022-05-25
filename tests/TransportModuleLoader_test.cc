@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "TransportModule.h"
-#include "log.h"
+#include "aitt_internal.h"
 
 class TransportModuleLoaderTest : public testing::Test {
   public:

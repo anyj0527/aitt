@@ -19,7 +19,7 @@
 #include <stdlib.h>
 
 #include "AITT.h"
-#include "log.h"
+#include "aitt_internal.h"
 
 using namespace aitt;
 

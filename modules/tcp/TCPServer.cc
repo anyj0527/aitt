@@ -25,7 +25,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #define BACKLOG 10  // Accept only 10 simultaneously connections by default
 

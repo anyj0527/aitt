@@ -20,7 +20,7 @@
 #include <iostream>
 
 #include "AITT.h"
-#include "log.h"
+#include "aitt_internal.h"
 
 #define MY_IP "127.0.0.1"
 using AITT = aitt::AITT;

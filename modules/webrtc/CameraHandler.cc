@@ -15,7 +15,7 @@
  */
 #include "CameraHandler.h"
 
-#include "log.h"
+#include "aitt_internal.h"
 
 #define RETURN_DEFINED_NAME_AS_STRING(defined_constant) \
     case defined_constant:                              \
