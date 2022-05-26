@@ -23,6 +23,7 @@
 
 #include "Config.h"
 #include "MqttServer.h"
+#include "aitt_internal.h"
 
 #define DEFAULT_BROKER_IP "127.0.0.1"
 #define DEFAULT_BROKER_PORT 1883
@@ -30,7 +31,7 @@
 #define DEFAULT_WEBRTC_SRC_ID "webrtc_src"
 #define DEFAULT_FIRST_SINK_ID "webrtc_first_sink"
 #define DEFAULT_SECOND_SINK_ID "webrtc_second_sink"
-#define DEFAULT_ROOM_ID "/aitt/webrtc/room/Room.webrtc"
+#define DEFAULT_ROOM_ID AITT_MANAGED_TOPIC_PREFIX "webrtc/room/Room.webrtc"
 
 class MqttServerTest : public testing::Test {
   protected:

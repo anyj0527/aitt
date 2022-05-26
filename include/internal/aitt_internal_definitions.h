@@ -19,3 +19,5 @@
 #undef API
 #endif
 #define API __attribute__((visibility("default")))
+
+#define AITT_MANAGED_TOPIC_PREFIX "/v1/custom/aitt/"
