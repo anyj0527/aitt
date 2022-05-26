@@ -355,11 +355,14 @@ int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, con
           replyTopic,
           [this, cb](MSG *sub_msg, const void *sub_data, const size_t sub_datalen,
                 void *sub_cbdata) {
-              cb(sub_msg, sub_data, sub_datalen, sub_cbdata);
-
               if (sub_msg->IsEndSequence()) {
-                  Unsubscribe(sub_msg->GetID());
+                  try {
+                      Unsubscribe(sub_msg->GetID());
+                  } catch (std::runtime_error &e) {
+                      ERR("Unsubscribe() Fail(%s)", e.what());
+                  }
               }
+              cb(sub_msg, sub_data, sub_datalen, sub_cbdata);
           },
           cbdata, protocol, qos);
 
@@ -387,10 +390,12 @@ int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
     subscribe_handle = MQSubscribe(
           info, &sync_loop, replyTopic,
           [&](MSG *sub_msg, const void *sub_data, const size_t sub_datalen, void *sub_cbdata) {
-              cb(sub_msg, sub_data, sub_datalen, sub_cbdata);
-
               if (sub_msg->IsEndSequence()) {
-                  Unsubscribe(sub_msg->GetID());
+                  try {
+                      Unsubscribe(sub_msg->GetID());
+                  } catch (std::runtime_error &e) {
+                      ERR("Unsubscribe() Fail(%s)", e.what());
+                  }
                   sync_loop.Quit();
               } else {
                   if (timeout_id) {
@@ -398,6 +403,7 @@ int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
                       HandleTimeout(timeout_ms, timeout_id, sync_loop, is_timeout);
                   }
               }
+              cb(sub_msg, sub_data, sub_datalen, sub_cbdata);
           },
           cbdata, qos);
     info->second = subscribe_handle;
