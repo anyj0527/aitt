@@ -143,6 +143,11 @@ public class Aitt implements AutoCloseable {
         publishJNI(instance, JAVA_SPECIFIC_DISCOVERY_TOPIC, new byte[0], 0, Protocol.MQTT.getValue(), QoS.AT_LEAST_ONCE.ordinal(), true);
 
         disconnectJNI(instance);
+        try {
+            close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void publish(String topic, byte[] message) {
@@ -470,15 +475,6 @@ public class Aitt implements AutoCloseable {
             }
         }
         return proto;
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        try {
-            close();
-        } finally {
-            super.finalize();
-        }
     }
 
     @Override
