@@ -25,18 +25,12 @@
 #define LOG_BLUE "\033[34m"
 #define LOG_END "\033[0m"
 
-#ifdef API
-#undef API
-#endif
-#define API __attribute__((visibility("default")))
-
 #if defined(PLATFORM) && !defined(LOG_STDOUT)
 
-#define XSTR(x) STR(x)
 #define STR(x) #x
-#define EXPAND(x) x
-#define PLATFORM_HEADER(d, f) XSTR(EXPAND(d) EXPAND(f))
-#include PLATFORM_HEADER(PLATFORM,/aitt_platform.h)  // Must include no space
+#define PURE(x) x
+#define PLATFORM_HEADER(x) STR(x)
+#include PLATFORM_HEADER(PLATFORM PURE(/) PURE(aitt_platform.h))
 
 #else  // PLATFORM
 
@@ -55,27 +49,3 @@
           __LINE__, ##__VA_ARGS__)
 
 #endif  // PLATFORM
-
-#define RET_IF(expr)            \
-    do {                        \
-        if (expr) {             \
-            ERR("(%s)", #expr); \
-            return;             \
-        }                       \
-    } while (0)
-
-#define RETV_IF(expr, val)      \
-    do {                        \
-        if (expr) {             \
-            ERR("(%s)", #expr); \
-            return (val);       \
-        }                       \
-    } while (0)
-
-#define RETVM_IF(expr, val, fmt, arg...) \
-    do {                                 \
-        if (expr) {                      \
-            ERR(fmt, ##arg);             \
-            return (val);                \
-        }                                \
-    } while (0)

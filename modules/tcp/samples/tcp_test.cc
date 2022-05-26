@@ -17,18 +17,21 @@
 #include <TCPServer.h>
 #include <getopt.h>
 #include <glib.h>
-#include <aitt_internal.h>
 
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <string>
 
+//#define _LOG_WITH_TIMESTAMP
+#include "aitt_internal.h"
+#ifdef _LOG_WITH_TIMESTAMP
+__thread __aitt__tls__ __aitt;
+#endif
+
 #define HELLO_STRING "hello"
 #define BYE_STRING "bye"
 #define SEND_INTERVAL 1000
-
-__thread __aitt__tls__ __aitt;
 
 class AittTcpSample {
   public:

@@ -18,6 +18,7 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 #include <sys/random.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <thread>
