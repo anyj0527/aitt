@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 
-public class Aitt implements AutoCloseable {
+public class Aitt {
     private static final String TAG = "AITT_ANDROID";
     private static final String WILL_LEAVE_NETWORK = "disconnected";
     private static final String AITT_LOCALHOST = "127.0.0.1";
@@ -477,7 +477,6 @@ public class Aitt implements AutoCloseable {
         return proto;
     }
 
-    @Override
     public void close() {
         synchronized (this) {
             if(subscribeCallbacks!=null) {
