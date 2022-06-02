@@ -18,7 +18,8 @@
 
 #include "aitt_internal.h"
 
-#define MQTT_HANDLER_DEFAULT_QOS 2
+#define MQTT_HANDLER_MSG_QOS 1
+#define MQTT_HANDLER_MGMT_QOS 2
 
 MqttServer::MqttServer(const Config &config)
 {
@@ -90,22 +91,19 @@ void MqttServer::MessageCallback(mosquitto *handle, void *mqtt_server, const mos
         return;
     }
 
-    INFO("%s received",
-          std::string(static_cast<char *>(msg->payload), msg->payloadlen - 1).c_str());
+    auto received_message = std::string(static_cast<char *>(msg->payload), msg->payloadlen);
+
+    INFO("%s received", received_message.c_str());
     MqttServer *server = static_cast<MqttServer *>(mqtt_server);
     if (!server)
         return;
 
     if (server->IsRoomTopic(msg->topic))
-        server->HandleRoomTopic(
-              std::string(static_cast<char *>(msg->payload), msg->payloadlen - 1).c_str());
+        server->HandleRoomTopic(received_message.c_str());
     else if (server->IsSourceTopic(msg->topic))
-        server->HandleSourceTopic(
-              std::string(static_cast<char *>(msg->payload), msg->payloadlen - 1).c_str(),
-              msg->retain);
+        server->HandleSourceTopic(received_message.c_str(), msg->retain);
     else if (server->IsMessageTopic(msg->topic))
-        server->HandleMessageTopic(
-              std::string(static_cast<char *>(msg->payload), msg->payloadlen - 1).c_str());
+        server->HandleMessageTopic(received_message.c_str());
     else
         ERR("Can't handle this topic yet %s", msg->topic);
 }
@@ -197,8 +195,8 @@ void MqttServer::RegisterWithServer(void)
     // Notify Who is source?
     std::string source_topic = room_id_ + std::string("/source");
     if (is_publisher_) {
-        int ret = mosquitto_publish(handle_, nullptr, source_topic.c_str(), id_.size() + 1,
-              id_.c_str(), MQTT_HANDLER_DEFAULT_QOS, true);
+        int ret = mosquitto_publish(handle_, nullptr, source_topic.c_str(), id_.size(), id_.c_str(),
+              MQTT_HANDLER_MGMT_QOS, true);
         if (ret != MOSQ_ERR_SUCCESS) {
             ERR("mosquitto_publish(%s) Fail(%s)", source_topic.c_str(), mosquitto_strerror(ret));
             throw std::runtime_error(mosquitto_strerror(ret));
@@ -206,7 +204,7 @@ void MqttServer::RegisterWithServer(void)
         SetConnectionState(ConnectionState::Registered);
     } else {
         int ret =
-              mosquitto_subscribe(handle_, nullptr, source_topic.c_str(), MQTT_HANDLER_DEFAULT_QOS);
+              mosquitto_subscribe(handle_, nullptr, source_topic.c_str(), MQTT_HANDLER_MGMT_QOS);
         if (ret != MOSQ_ERR_SUCCESS) {
             ERR("mosquitto_subscribe() Fail(%s)", mosquitto_strerror(ret));
             throw std::runtime_error(mosquitto_strerror(ret));
@@ -254,7 +252,8 @@ int MqttServer::Disconnect(void)
         INFO("remove retained");
         // There're some differences between Qos 1 and Qos 2...
         std::string source_topic = room_id_ + std::string("/source");
-        int ret = mosquitto_publish(handle_, nullptr, source_topic.c_str(), 0, nullptr, 1, true);
+        int ret = mosquitto_publish(handle_, nullptr, source_topic.c_str(), 0, nullptr,
+              MQTT_HANDLER_MSG_QOS, true);
         if (ret != MOSQ_ERR_SUCCESS) {
             ERR("mosquitto_publish(%s) Fail(%s)", source_topic.c_str(), mosquitto_strerror(ret));
             throw std::runtime_error(mosquitto_strerror(ret));
@@ -262,8 +261,8 @@ int MqttServer::Disconnect(void)
     }
     // Need PEER_LEFT message or use Last will?
     std::string left_message = std::string("ROOM_PEER_LEFT ") + id_;
-    int ret = mosquitto_publish(handle_, nullptr, room_id_.c_str(), left_message.size() + 1,
-          left_message.c_str(), 1, false);
+    int ret = mosquitto_publish(handle_, nullptr, room_id_.c_str(), left_message.size(),
+          left_message.c_str(), MQTT_HANDLER_MSG_QOS, false);
     if (ret != MOSQ_ERR_SUCCESS)
         throw std::runtime_error(mosquitto_strerror(ret));
 
@@ -292,8 +291,8 @@ int MqttServer::SendMessage(const std::string &peer_id, const std::string &msg)
     std::string mqtt_server_formatted_message =
           std::string("ROOM_PEER_MSG ") + id_ + std::string(" ") + msg;
     int ret = mosquitto_publish(handle_, nullptr, receiver_topic.c_str(),
-          mqtt_server_formatted_message.size() + 1, mqtt_server_formatted_message.c_str(),
-          1, false);
+          mqtt_server_formatted_message.size(), mqtt_server_formatted_message.c_str(),
+          MQTT_HANDLER_MSG_QOS, false);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_publish(%s) Fail(%s)", room_id_.c_str(), mosquitto_strerror(ret));
         return -1;
@@ -340,7 +339,7 @@ void MqttServer::JoinRoom(const std::string &room_id)
     }
 
     // Subscribe PEER_JOIN PEER_LEFT
-    int ret = mosquitto_subscribe(handle_, nullptr, room_id_.c_str(), MQTT_HANDLER_DEFAULT_QOS);
+    int ret = mosquitto_subscribe(handle_, nullptr, room_id_.c_str(), MQTT_HANDLER_MGMT_QOS);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_subscribe() Fail(%s)", mosquitto_strerror(ret));
         throw std::runtime_error(mosquitto_strerror(ret));
@@ -357,8 +356,8 @@ void MqttServer::JoinRoom(const std::string &room_id)
 
     if (!is_publisher_) {
         std::string join_message = std::string("ROOM_PEER_JOINED ") + id_;
-        ret = mosquitto_publish(handle_, nullptr, room_id_.c_str(), join_message.size() + 1,
-            join_message.c_str(), MQTT_HANDLER_DEFAULT_QOS, false);
+        ret = mosquitto_publish(handle_, nullptr, room_id_.c_str(), join_message.size(),
+              join_message.c_str(), MQTT_HANDLER_MGMT_QOS, false);
         if (ret != MOSQ_ERR_SUCCESS)
             throw std::runtime_error(mosquitto_strerror(ret));
     }
