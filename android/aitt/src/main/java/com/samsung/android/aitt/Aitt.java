@@ -180,7 +180,7 @@ public class Aitt {
                         Protocol protocol = portTable.portMap.get(port).first;
                         Object transportHandler = portTable.portMap.get(port).second;
                         if (protocol == Protocol.WEBRTC) {
-                            sendData(portTable, topic, transportHandler, port, message);
+                            publishWebRTC(portTable, topic, transportHandler, ip, port, message);
                         } else {
                             int proto = protocolsToInt(protocols);
                             publishJNI(instance, topic, message, message.length, proto, qos.ordinal(), retain);
@@ -194,9 +194,9 @@ public class Aitt {
         }
     }
 
-    private void sendData(PortTable portTable, String topic, Object transportHandler, int port, byte[] message) {
+    private void publishWebRTC(PortTable portTable, String topic, Object transportHandler, String ip, int port, byte[] message) {
         WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.Message : WebRTC.DataType.VideoFrame;
-        WebRTC webrtcHandler = null;
+        WebRTC webrtcHandler;
         if (transportHandler == null) {
             webrtcHandler = new WebRTC(dataType, appContext);
             transportHandler = webrtcHandler;
