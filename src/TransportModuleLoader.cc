@@ -45,6 +45,8 @@ std::string TransportModuleLoader::GetModuleFilename(AittProtocol protocol)
 
 std::shared_ptr<TransportModule> TransportModuleLoader::GetInstance(AittProtocol protocol)
 {
+    std::lock_guard<std::mutex> lock_from_here(module_lock);
+
     auto item = module_table.find(protocol);
     if (item != module_table.end())
         return item->second.second;

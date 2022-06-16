@@ -20,6 +20,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "TransportModuleLoader.h"
@@ -45,6 +46,7 @@ class TransportModuleLoader {
     using Handler = std::unique_ptr<void, void (*)(const void *)>;
     using ModuleMap = std::map<AittProtocol, std::pair<Handler, std::shared_ptr<TransportModule>>>;
     ModuleMap module_table;
+    std::mutex module_lock;
     std::string ip;
 };
 

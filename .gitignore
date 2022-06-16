@@ -13,9 +13,11 @@ debian/tmp/
 build
 out
 aitt_gcov.info
+sam_cli.cfg
 
 # Built application files
 *.aar
+jacoco.exec
 
 # Gradle files
 .gradle/
