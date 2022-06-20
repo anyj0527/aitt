@@ -60,7 +60,7 @@ import java.util.concurrent.TimeUnit;
 public class WebRTC {
     private static final String TAG = "WebRTC";
     public static final String VIDEO_TRACK_ID = "ARDAMSv0";
-
+    private static final String CANDIDATE = "candidate";
     private java.net.Socket socket;
     private boolean isInitiator;
     private boolean isChannelReady;
@@ -313,10 +313,10 @@ public class WebRTC {
                 Log.d(TAG, "onIceCandidate: ");
                 JSONObject message = new JSONObject();
                 try {
-                    message.put("type", "candidate");
+                    message.put("type", CANDIDATE);
                     message.put("label", iceCandidate.sdpMLineIndex);
                     message.put("id", iceCandidate.sdpMid);
-                    message.put("candidate", iceCandidate.sdp);
+                    message.put(CANDIDATE, iceCandidate.sdp);
                     Log.d(TAG, "onIceCandidate: sending candidate " + message);
                     sendMessage(true , message);
                 } catch (JSONException | IOException e) {
@@ -347,7 +347,8 @@ public class WebRTC {
                 dataChannel.registerObserver(new DataChannel.Observer() {
                     @Override
                     public void onBufferedAmountChange(long l) {
-
+                        //Keep this callback for future usage
+                        Log.d(TAG, "onBufferedAmountChange:");
                     }
 
                     @Override
@@ -424,18 +425,22 @@ public class WebRTC {
     private static class SimpleSdpObserver implements SdpObserver {
         @Override
         public void onCreateSuccess(SessionDescription sessionDescription) {
+            //Required for future reference
         }
 
         @Override
         public void onSetSuccess() {
+            Log.d(TAG, "onSetSuccess:");
         }
 
         @Override
         public void onCreateFailure(String s) {
+            Log.d(TAG, "onCreateFailure: Reason = " + s);
         }
 
         @Override
         public void onSetFailure(String s) {
+            Log.d(TAG, "onSetFailure: Reason = " + s);
         }
     }
 
@@ -457,15 +462,19 @@ public class WebRTC {
         }
 
         public void startCapture(int width, int height, int framerate) {
+            //Required for future reference
         }
 
         public void stopCapture() throws InterruptedException {
+            //Required for future reference
         }
 
         public void changeCaptureFormat(int width, int height, int framerate) {
+            //Required for future reference
         }
 
         public void dispose() {
+            //Required for future reference
         }
 
         public boolean isScreencast() {
@@ -516,9 +525,9 @@ public class WebRTC {
                             doAnswer();
                         } else if (message.getString("type").equals("answer") && isStarted) {
                             peerConnection.setRemoteDescription(new SimpleSdpObserver(), new SessionDescription(ANSWER, message.getString("sdp")));
-                        } else if (message.getString("type").equals("candidate") && isStarted) {
+                        } else if (message.getString("type").equals(CANDIDATE) && isStarted) {
                             Log.d(TAG, "connectToSignallingServer: receiving candidates");
-                            IceCandidate candidate = new IceCandidate(message.getString("id"), message.getInt("label"), message.getString("candidate"));
+                            IceCandidate candidate = new IceCandidate(message.getString("id"), message.getInt("label"), message.getString(CANDIDATE));
                             peerConnection.addIceCandidate(candidate);
                         }
                     }
