@@ -61,7 +61,7 @@ class API AITT {
           AittQoS qos = AITT_QOS_AT_MOST_ONCE);
     void *Unsubscribe(AittSubscribeID handle);
 
-    void SendReply(MSG *msg, const void *data, const int datalen, bool end = true);
+    void SendReply(MSG *msg, const void *data, const size_t datalen, bool end = true);
 
     // NOTE:
     // Provide utility functions to developers who only be able to access the AITT class

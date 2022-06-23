@@ -76,6 +76,37 @@ class AITTTest : public testing::Test {
         return TRUE;
     }
 
+    void pubsub_template(const char *test_msg, AittProtocol protocol)
+    {
+        try {
+            AITT aitt(clientId, MY_IP, true);
+            aitt.Connect();
+            aitt.Subscribe(
+                  testTopic,
+                  [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+                      AITTTest *test = static_cast<AITTTest *>(cbdata);
+                      test->ToggleReady();
+                      DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
+                  },
+                  static_cast<void *>(this), protocol);
+
+            // Wait a few seconds until the AITT client gets a server list (discover devices)
+            DBG("Sleep %d secs", SLEEP_MS);
+            sleep(SLEEP_MS);
+
+            DBG("Publish(%s) : %s(%zu)", testTopic.c_str(), test_msg, strlen(test_msg));
+            aitt.Publish(testTopic, test_msg, strlen(test_msg), protocol);
+
+            g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+
+            IterateEventLoop();
+
+            ASSERT_TRUE(ready);
+        } catch (std::exception &e) {
+            FAIL() << "Unexpected exception: " << e.what();
+        }
+    }
+
     GMainLoop *mainLoop;
     std::string clientId;
     std::string testTopic;
@@ -266,29 +297,12 @@ TEST_F(AITTTest, Positive_Unsubscribe_TCP_Anytime)
 
 TEST_F(AITTTest, Positve_PublishSubscribe_MQTT_Anytime)
 {
-    try {
-        AITT aitt(clientId, MY_IP, true);
-        aitt.Connect();
-        aitt.Subscribe(
-              testTopic,
-              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
-                  AITTTest *test = static_cast<AITTTest *>(cbdata);
-                  test->ToggleReady();
-                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
-              },
-              static_cast<void *>(this));
+    pubsub_template(TEST_MSG, AITT_TYPE_MQTT);
+}
 
-        DBG("Publish message to %s (%s)", testTopic.c_str(), TEST_MSG);
-        aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG));
-
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
-
-        IterateEventLoop();
-
-        ASSERT_TRUE(ready);
-    } catch (std::exception &e) {
-        FAIL() << "Unexpected exception: " << e.what();
-    }
+TEST_F(AITTTest, Positve_Publish_0_MQTT_Anytime)
+{
+    pubsub_template("", AITT_TYPE_MQTT);
 }
 
 TEST_F(AITTTest, Positve_Unsubscribe_in_Subscribe_MQTT_Anytime)
@@ -328,33 +342,12 @@ TEST_F(AITTTest, Positve_Unsubscribe_in_Subscribe_MQTT_Anytime)
 
 TEST_F(AITTTest, Positve_PublishSubscribe_TCP_Anytime)
 {
-    try {
-        AITT aitt(clientId, MY_IP, true);
-        aitt.Connect();
-        aitt.Subscribe(
-              testTopic,
-              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
-                  AITTTest *test = static_cast<AITTTest *>(cbdata);
-                  test->ToggleReady();
-                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
-              },
-              static_cast<void *>(this), AITT_TYPE_TCP);
+    pubsub_template(TEST_MSG, AITT_TYPE_TCP);
+}
 
-        // Wait a few seconds until the AITT client gets a server list (discover devices)
-        DBG("Sleep %d secs", SLEEP_MS);
-        sleep(SLEEP_MS);
-
-        DBG("Publish message to %s (%s) / %zu", testTopic.c_str(), TEST_MSG, sizeof(TEST_MSG));
-        aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG), AITT_TYPE_TCP);
-
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
-
-        IterateEventLoop();
-
-        ASSERT_TRUE(ready);
-    } catch (std::exception &e) {
-        FAIL() << "Unexpected exception: " << e.what();
-    }
+TEST_F(AITTTest, Positve_Publish_0_TCP_Anytime)
+{
+    pubsub_template("", AITT_TYPE_TCP);
 }
 
 TEST_F(AITTTest, Positve_PublishSubscribe_Multiple_Protocols_Anytime)
@@ -496,8 +489,8 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
                   static int cnt = 0;
                   ++cnt;
-                  if (szmsg == 0) {
-                      FAIL() << "Unexpected value";
+                  if (szmsg == 0 && cnt != 12) {
+                      FAIL() << "Unexpected value" << cnt;
                   }
                   if (cnt == 10)
                       test->ToggleReady();

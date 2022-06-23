@@ -79,6 +79,9 @@ void AITT::Disconnect(void)
 void AITT::Publish(const std::string &topic, const void *data, const size_t datalen,
       AittProtocol protocols, AittQoS qos, bool retain)
 {
+    if (AITT_PAYLOAD_MAX < datalen)
+        throw std::runtime_error("Invalid Size");
+
     return pImpl->Publish(topic, data, datalen, protocols, qos, retain);
 }
 
@@ -86,6 +89,9 @@ int AITT::PublishWithReply(const std::string &topic, const void *data, const siz
       AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
       const std::string &correlation)
 {
+    if (AITT_PAYLOAD_MAX < datalen)
+        throw std::runtime_error("Invalid Size");
+
     return pImpl->PublishWithReply(topic, data, datalen, protocol, qos, retain, cb, cbdata,
           correlation);
 }
@@ -94,6 +100,9 @@ int AITT::PublishWithReplySync(const std::string &topic, const void *data, const
       AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
       const std::string &correlation, int timeout_ms)
 {
+    if (AITT_PAYLOAD_MAX < datalen)
+        throw std::runtime_error("Invalid Size");
+
     return pImpl->PublishWithReplySync(topic, data, datalen, protocol, qos, retain, cb, cbdata,
           correlation, timeout_ms);
 }
@@ -109,8 +118,11 @@ void *AITT::Unsubscribe(AittSubscribeID handle)
     return pImpl->Unsubscribe(handle);
 }
 
-void AITT::SendReply(MSG *msg, const void *data, const int datalen, bool end)
+void AITT::SendReply(MSG *msg, const void *data, size_t datalen, bool end)
 {
+    if (AITT_PAYLOAD_MAX < datalen)
+        throw std::runtime_error("Invalid Size");
+
     return pImpl->SendReply(msg, data, datalen, end);
 }
 

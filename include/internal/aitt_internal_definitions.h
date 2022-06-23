@@ -21,3 +21,9 @@
 #define API __attribute__((visibility("default")))
 
 #define AITT_MANAGED_TOPIC_PREFIX "/v1/custom/aitt/"
+
+// Specification MQTT-4.7.3-3
+#define AITT_TOPIC_NAME_MAX 65535
+
+// Specification MQTT-1.5.5
+#define AITT_PAYLOAD_MAX 268435455

@@ -17,7 +17,6 @@
 
 #include <unistd.h>
 
-#include "Definitions.h"
 #include "aitt_internal.h"
 
 /*
@@ -130,20 +129,19 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
                     continue;
                 }
 
-                // NOTE:
-                // Send a message
-                //
-                // If possible, all protocol should
-                // be inherited from a common interface
-                // which defines Send and Recv methods
                 uint32_t sendsize = datalen;
                 size_t szsize = sizeof(sendsize);
 
                 try {
+                    if (0 == datalen) {
+                        // distinguish between connection problems and zero-size messages
+                        INFO("Send zero-size Message");
+                        sendsize = UINT32_MAX;
+                    }
                     portIt->second->Send(static_cast<void *>(&sendsize), szsize);
 
-                    int msgSize = sendsize;
-                    while (msgSize > 0) {
+                    int msgSize = datalen;
+                    while (0 < msgSize) {
                         size_t sentSize = msgSize;
                         char *dataIdx = (char *)data + (sendsize - msgSize);
                         portIt->second->Send(dataIdx, sentSize);
@@ -373,10 +371,15 @@ void Module::ReceiveData(MainLoopHandler::MainLoopResult result, int handle,
 
         try {
             connect_info->client->Recv(static_cast<void *>(&szmsg), szdata);
-
             if (szmsg == 0) {
                 ERR("Disconnected");
                 return impl->HandleClientDisconnect(handle);
+            }
+
+            if (UINT32_MAX == szmsg) {
+                // distinguish between connection problems and zero-size messages
+                INFO("Got zero-size Message");
+                szmsg = 0;
             }
 
             msg = static_cast<char *>(malloc(szmsg));
