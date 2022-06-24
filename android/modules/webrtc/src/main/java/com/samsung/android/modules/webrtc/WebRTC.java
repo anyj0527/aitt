@@ -445,7 +445,6 @@ public class WebRTC {
     }
 
     private static class FrameVideoCapturer implements VideoCapturer {
-        private static final String TAG = "FrameVideoCapturer";
         private CapturerObserver capturerObserver;
 
         void send(byte[] frame, int width, int height) {
