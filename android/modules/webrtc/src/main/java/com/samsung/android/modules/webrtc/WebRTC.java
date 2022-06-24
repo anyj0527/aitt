@@ -202,7 +202,7 @@ public class WebRTC {
     }
 
     private void sendMessage(boolean isJSON , Object message) throws IOException {
-        System.out.println(message.toString());
+        Log.d(TAG , message.toString());
         if(isJSON){
             outStream.writeObject(new Packet((JSONObject) message));
         }
