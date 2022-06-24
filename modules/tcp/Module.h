@@ -81,7 +81,6 @@ class Module : public TransportModule {
 
     struct TCPData : public MainLoopHandler::MainLoopData {
         TCPServerData *parent;
-        std::string topic;
         std::unique_ptr<TCP> client;
     };
 
@@ -131,8 +130,10 @@ class Module : public TransportModule {
     static void ReceiveData(MainLoopHandler::MainLoopResult result, int handle,
           MainLoopHandler::MainLoopData *watchData);
     void HandleClientDisconnect(int handle);
-    void EstablishConnection(TCPData *watchData, int handle);
+    std::string GetTopicName(TCPData *connect_info);
     void ThreadMain(void);
+    void SendPayload(const size_t &datalen, Module::PortMap::iterator &portIt, const void *data);
+    void SendTopic(const std::string &topic, Module::PortMap::iterator &portIt);
 
     void UpdatePublishTable(const std::string &topic, const std::string &host, unsigned short port);
 

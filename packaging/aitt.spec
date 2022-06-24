@@ -71,7 +71,7 @@ cp %{SOURCE1001} .
 %make_install
 
 %check
-ctest --output-on-failure --timeout 20 || true
+ctest --output-on-failure --timeout 30 || true
 
 %if 0%{test} && 0%{gcov}
 # Extract coverage information

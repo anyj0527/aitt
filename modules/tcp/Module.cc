@@ -107,54 +107,55 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
                     // There should be an observer to monitor
                     // each connections and manipulate
                     // the discovered service table
-
-                    // NOTE:
-                    // At the first time, the connection is established,
-                    // The publisher must send the metadata for the connection
-
-                    // Send the topic string
-                    uint32_t topicLen = topic.length() + 1;
-                    size_t szData = sizeof(topicLen);
-                    client->Send(static_cast<void *>(&topicLen), szData);
-                    szData = topicLen;
-                    client->Send(static_cast<const void *>(topic.c_str()), szData);
                     portIt->second = std::move(client);
                 }
 
-                // NOTE:
-                // If the protocol is not supported,
-                // the channel would be nullptr then skip
                 if (!portIt->second) {
                     ERR("Failed to create a new client instance");
                     continue;
                 }
 
-                uint32_t sendsize = datalen;
-                size_t szsize = sizeof(sendsize);
-
-                try {
-                    if (0 == datalen) {
-                        // distinguish between connection problems and zero-size messages
-                        INFO("Send zero-size Message");
-                        sendsize = UINT32_MAX;
-                    }
-                    portIt->second->Send(static_cast<void *>(&sendsize), szsize);
-
-                    int msgSize = datalen;
-                    while (0 < msgSize) {
-                        size_t sentSize = msgSize;
-                        char *dataIdx = (char *)data + (sendsize - msgSize);
-                        portIt->second->Send(dataIdx, sentSize);
-                        if (sentSize > 0) {
-                            msgSize -= sentSize;
-                        }
-                    }
-                } catch (std::exception &e) {
-                    ERR("An exception(%s) occurs during Send().", e.what());
-                }
+                SendTopic(topic, portIt);
+                SendPayload(datalen, portIt, data);
             }
         }  // connectionEntries
     }      // publishTable
+}
+
+void Module::SendTopic(const std::string &topic, Module::PortMap::iterator &portIt)
+{
+    uint32_t topicLen = topic.length();
+    size_t szData = sizeof(topicLen);
+    portIt->second->Send(static_cast<void *>(&topicLen), szData);
+    szData = topicLen;
+    portIt->second->Send(static_cast<const void *>(topic.c_str()), szData);
+}
+
+void Module::SendPayload(const size_t &datalen, Module::PortMap::iterator &portIt, const void *data)
+{
+    uint32_t sendsize = datalen;
+    size_t szsize = sizeof(sendsize);
+
+    try {
+        if (0 == datalen) {
+            // distinguish between connection problems and zero-size messages
+            INFO("Send zero-size Message");
+            sendsize = UINT32_MAX;
+        }
+        portIt->second->Send(static_cast<void *>(&sendsize), szsize);
+
+        int msgSize = datalen;
+        while (0 < msgSize) {
+            size_t sentSize = msgSize;
+            char *dataIdx = (char *)data + (sendsize - msgSize);
+            portIt->second->Send(dataIdx, sentSize);
+            if (sentSize > 0) {
+                msgSize -= sentSize;
+            }
+        }
+    } catch (std::exception &e) {
+        ERR("An exception(%s) occurs during Send().", e.what());
+    }
 }
 
 void Module::Publish(const std::string &topic, const void *data, const size_t datalen, AittQoS qos,
@@ -359,50 +360,49 @@ void Module::ReceiveData(MainLoopHandler::MainLoopResult result, int handle,
         return impl->HandleClientDisconnect(handle);
     }
 
-    if (connect_info->topic.empty()) {
-        impl->EstablishConnection(connect_info, handle);
-    } else {
-        // ReceiveData
-        // TODO:
-        // Need to build the TCP data protocol
-        uint32_t szmsg = 0;
-        size_t szdata = sizeof(szmsg);
-        char *msg = nullptr;
+    uint32_t szmsg = 0;
+    size_t szdata = sizeof(szmsg);
+    char *msg = nullptr;
+    std::string topic;
 
-        try {
-            connect_info->client->Recv(static_cast<void *>(&szmsg), szdata);
-            if (szmsg == 0) {
-                ERR("Disconnected");
-                return impl->HandleClientDisconnect(handle);
-            }
-
-            if (UINT32_MAX == szmsg) {
-                // distinguish between connection problems and zero-size messages
-                INFO("Got zero-size Message");
-                szmsg = 0;
-            }
-
-            msg = static_cast<char *>(malloc(szmsg));
-            int msgSize = szmsg;
-            while (0 < msgSize) {
-                size_t receivedSize = msgSize;
-                connect_info->client->Recv(static_cast<void *>(msg + (szmsg - msgSize)),
-                      receivedSize);
-                if (receivedSize > 0) {
-                    msgSize -= receivedSize;
-                }
-            }
-        } catch (std::exception &e) {
-            ERR("An exception(%s) occurs during Recv()", e.what());
+    try {
+        topic = impl->GetTopicName(connect_info);
+        if (topic.empty()) {
+            ERR("Unknown Topic");
+            return impl->HandleClientDisconnect(handle);
         }
 
-        std::string correlation;
-        // TODO:
-        // Correlation data (string) should be filled
+        connect_info->client->Recv(static_cast<void *>(&szmsg), szdata);
+        if (szmsg == 0) {
+            ERR("Disconnected");
+            return impl->HandleClientDisconnect(handle);
+        }
 
-        parent_info->cb(connect_info->topic, msg, szmsg, parent_info->cbdata, correlation);
-        free(msg);
+        if (UINT32_MAX == szmsg) {
+            // distinguish between connection problems and zero-size messages
+            INFO("Got zero-size Message");
+            szmsg = 0;
+        }
+
+        msg = static_cast<char *>(malloc(szmsg));
+        int msgSize = szmsg;
+        while (0 < msgSize) {
+            size_t receivedSize = msgSize;
+            connect_info->client->Recv(static_cast<void *>(msg + (szmsg - msgSize)), receivedSize);
+            if (receivedSize > 0) {
+                msgSize -= receivedSize;
+            }
+        }
+    } catch (std::exception &e) {
+        ERR("An exception(%s) occurs during Recv()", e.what());
     }
+
+    std::string correlation;
+    // TODO:
+    // Correlation data (string) should be filled
+
+    parent_info->cb(topic, msg, szmsg, parent_info->cbdata, correlation);
+    free(msg);
 }
 
 void Module::HandleClientDisconnect(int handle)
@@ -421,16 +421,15 @@ void Module::HandleClientDisconnect(int handle)
     delete connect_info;
 }
 
-void Module::EstablishConnection(Module::TCPData *connect_info, int handle)
+std::string Module::GetTopicName(Module::TCPData *connect_info)
 {
-    // First, the client should send a topic string.
     uint32_t topic_len = 0;
     size_t data_size = sizeof(topic_len);
     connect_info->client->Recv(static_cast<void *>(&topic_len), data_size);
 
     if (AITT_TOPIC_NAME_MAX < topic_len) {
         ERR("Invalid topic name length(%d)", topic_len);
-        return;
+        return std::string();
     }
 
     char data[topic_len];
@@ -439,7 +438,7 @@ void Module::EstablishConnection(Module::TCPData *connect_info, int handle)
     if (data_size != topic_len)
         ERR("Recv() Fail");
 
-    connect_info->topic = std::string(data, data_size);
+    return std::string(data, data_size);
 }
 
 void Module::AcceptConnection(MainLoopHandler::MainLoopResult result, int handle,

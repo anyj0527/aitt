@@ -7,7 +7,7 @@ INCLUDE_DIRECTORIES(${UT_NEEDS_INCLUDE_DIRS})
 LINK_DIRECTORIES(${UT_NEEDS_LIBRARY_DIRS})
 
 ###########################################################################
-SET(AITT_UT_SRC AITT_test.cc RequestResponse_test.cc MainLoopHandler_test.cc aitt_c_test.cc)
+SET(AITT_UT_SRC AITT_test.cc RequestResponse_test.cc MainLoopHandler_test.cc aitt_c_test.cc AITT_TCP_test.cc)
 ADD_EXECUTABLE(${AITT_UT} ${AITT_UT_SRC})
 TARGET_LINK_LIBRARIES(${AITT_UT} Threads::Threads ${UT_NEEDS_LIBRARIES} ${PROJECT_NAME})
 

@@ -83,10 +83,10 @@ class AITTTest : public testing::Test {
             aitt.Connect();
             aitt.Subscribe(
                   testTopic,
-                  [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+                  [](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                       AITTTest *test = static_cast<AITTTest *>(cbdata);
                       test->ToggleReady();
-                      DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
+                      DBG("Subscribe invoked: %s %zu", static_cast<const char *>(msg), szmsg);
                   },
                   static_cast<void *>(this), protocol);
 
@@ -256,7 +256,7 @@ TEST_F(AITTTest, Positive_Subscribe_Anytime)
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
-              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {},
+              [](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {},
               nullptr, AITT_TYPE_TCP);
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
@@ -270,7 +270,7 @@ TEST_F(AITTTest, Positive_Unsubscribe_MQTT_Anytime)
         aitt.Connect();
         subscribeHandle = aitt.Subscribe(
               testTopic,
-              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {},
+              [](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {},
               nullptr, AITT_TYPE_MQTT);
         DBG(">>> Handle: %p", reinterpret_cast<void *>(subscribeHandle));
         aitt.Unsubscribe(subscribeHandle);
@@ -286,7 +286,7 @@ TEST_F(AITTTest, Positive_Unsubscribe_TCP_Anytime)
         aitt.Connect();
         subscribeHandle = aitt.Subscribe(
               testTopic,
-              [](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {},
+              [](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {},
               nullptr, AITT_TYPE_TCP);
         DBG("Subscribe handle: %p", reinterpret_cast<void *>(subscribeHandle));
         aitt.Unsubscribe(subscribeHandle);
@@ -312,9 +312,9 @@ TEST_F(AITTTest, Positve_Unsubscribe_in_Subscribe_MQTT_Anytime)
         aitt.Connect();
         subscribeHandle = aitt.Subscribe(
               testTopic,
-              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
-                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
+                  DBG("Subscribe invoked: %s %zu", static_cast<const char *>(msg), szmsg);
 
                   static int cnt = 0;
                   ++cnt;
@@ -357,18 +357,18 @@ TEST_F(AITTTest, Positve_PublishSubscribe_Multiple_Protocols_Anytime)
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
-              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
-                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
+                  DBG("Subscribe invoked: %s %zu", static_cast<const char *>(msg), szmsg);
                   test->ToggleReady();
               },
               static_cast<void *>(this), AITT_TYPE_TCP);
 
         aitt.Subscribe(
               testTopic,
-              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
-                  DBG("Subscribe invoked: %s %d", static_cast<const char *>(msg), szmsg);
+                  DBG("Subscribe invoked: %s %zu", static_cast<const char *>(msg), szmsg);
                   test->ToggleReady2();
               },
               static_cast<void *>(this), AITT_TYPE_MQTT);
@@ -399,7 +399,7 @@ TEST_F(AITTTest, Positve_PublishSubscribe_twice_Anytime)
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
-              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
                   // NOTE:
                   // Subscribe callback will be invoked 2 times
@@ -439,7 +439,7 @@ TEST_F(AITTTest, Positive_Subscribe_Retained_Anytime)
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
-              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
                   static int cnt = 0;
                   ++cnt;
@@ -475,8 +475,12 @@ TEST_F(AITTTest, Positive_Subscribe_Retained_Anytime)
 TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
 {
     try {
-        char dump_msg[204800];
+        char dump_msg[204800] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
         int dump_msg_size = getrandom(dump_msg, sizeof(dump_msg), 0);
+        if (-1 == dump_msg_size) {
+            ERR("getrandom() Fail(%d)", errno);
+            dump_msg_size = 62;
+        }
 
         AITT aitt(clientId, MY_IP);
         AITT aitt_retry("retry_test", MY_IP);
@@ -485,7 +489,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
 
         aitt.Subscribe(
               "test/stress1",
-              [&](aitt::MSG *handle, const void *msg, const int szmsg, void *cbdata) -> void {
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
                   AITTTest *test = static_cast<AITTTest *>(cbdata);
                   static int cnt = 0;
                   ++cnt;
@@ -507,10 +511,10 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
             sleep(SLEEP_MS);
 
             for (int i = 0; i < 10; i++) {
+                INFO("size = %d", dump_msg_size);
                 aitt1.Publish("test/stress1", dump_msg, dump_msg_size, AITT_TYPE_TCP,
                       AITT_QOS_AT_MOST_ONCE, true);
             }
-
             g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
 
             IterateEventLoop();
