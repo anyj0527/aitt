@@ -30,7 +30,7 @@ AITT::AITT(const std::string &id, const std::string &ip_addr, bool clear_session
         const char character_set[] =
               "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
         std::mt19937 random_gen{std::random_device{}()};
-        std::uniform_int_distribution<std::string::size_type> gen(0, 62);
+        std::uniform_int_distribution<std::string::size_type> gen(0, 61);
         char name[16];
         for (size_t i = 0; i < sizeof(name); i++) {
             name[i] = character_set[gen(random_gen)];
