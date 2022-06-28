@@ -195,7 +195,7 @@ public class Aitt {
     }
 
     private void publishWebRTC(PortTable portTable, String topic, Object transportHandler, String ip, int port, byte[] message) {
-        WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.Message : WebRTC.DataType.VideoFrame;
+        WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.MESSAGE : WebRTC.DataType.VIDEOFRAME;
         WebRTC webrtcHandler;
         if (transportHandler == null) {
             webrtcHandler = new WebRTC(dataType, appContext);
@@ -205,9 +205,9 @@ public class Aitt {
         } else {
             webrtcHandler = (WebRTC) transportHandler;
         }
-        if (dataType == WebRTC.DataType.Message) {
+        if (dataType == WebRTC.DataType.MESSAGE) {
             webrtcHandler.sendMessageData(message);
-        } else if (dataType == WebRTC.DataType.VideoFrame) {
+        } else if (dataType == WebRTC.DataType.VIDEOFRAME) {
             webrtcHandler.sendVideoData(message, frameWidth, frameHeight);
         }
     }
@@ -239,7 +239,7 @@ public class Aitt {
                     message.setTopic(topic);
                     messageReceived(message);
                 };
-                WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.Message : WebRTC.DataType.VideoFrame;
+                WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.MESSAGE : WebRTC.DataType.VIDEOFRAME;
                 WebRTCServer ws = new WebRTCServer(appContext, dataType, cb);
                 int serverPort = ws.start();
                 if (serverPort < 0) {

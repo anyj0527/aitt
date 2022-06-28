@@ -84,8 +84,8 @@ public class WebRTC {
     private DataType dataType;
 
     public enum DataType{
-        Message,
-        VideoFrame,
+        MESSAGE,
+        VIDEOFRAME,
     }
 
     public WebRTC(DataType dataType , Context appContext) {
