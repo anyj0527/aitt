@@ -487,6 +487,50 @@ public class WebRTC {
         @Override
         public void run() {
             isChannelReady = true;
+
+            createSocket();
+            invokeSendMessage();
+
+            while(isRunning){
+                try {
+                    Packet recvPacketNew = (Packet)inputStream.readObject();
+
+                    if(recvPacketNew.isString){
+                        String message = recvPacketNew.obj;
+                        checkPacketMessage(message);
+                    }
+                    else{
+                        JSONObject message = new JSONObject(recvPacketNew.obj);
+                        Log.d(TAG, "connectToSignallingServer: got message " + message);
+                        decodeMessage(message);
+                    }
+                } catch (ClassNotFoundException | JSONException | IOException e) {
+                    isRunning = false;
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        private void decodeMessage(JSONObject message){
+            try{
+                if (message.getString("type").equals("offer")) {
+                    Log.d(TAG, "connectToSignallingServer: received an offer " + isInitiator + " " + isStarted);
+                    invokeMaybeStart();
+                    peerConnection.setRemoteDescription(new SimpleSdpObserver(), new SessionDescription(OFFER, message.getString("sdp")));
+                    doAnswer();
+                } else if (message.getString("type").equals("answer") && isStarted) {
+                    peerConnection.setRemoteDescription(new SimpleSdpObserver(), new SessionDescription(ANSWER, message.getString("sdp")));
+                } else if (message.getString("type").equals(CANDIDATE) && isStarted) {
+                    Log.d(TAG, "connectToSignallingServer: receiving candidates");
+                    IceCandidate candidate = new IceCandidate(message.getString("id"), message.getInt("label"), message.getString(CANDIDATE));
+                    peerConnection.addIceCandidate(candidate);
+                }
+            }catch(JSONException e){
+                e.printStackTrace();
+            }
+        }
+
+        private void createSocket(){
             try {
                 if(!isReciever){
                     socket = new Socket(recieverIP, recieverPort);
@@ -496,44 +540,25 @@ public class WebRTC {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
 
+        private void invokeSendMessage(){
             try {
                 sendMessage(false , "got user media");
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
 
-            while(isRunning){
-                try {
-                    Packet recvPacketNew = (Packet)inputStream.readObject();
-                    if(recvPacketNew.isString){
-                        String message = recvPacketNew.obj;
-                        if (message.equals("got user media")) {
-                            maybeStart();
-                        }
-                    }
-                    else{
-                        JSONObject message = new JSONObject(recvPacketNew.obj);
-                        Log.d(TAG, "connectToSignallingServer: got message " + message);
-                        if (message.getString("type").equals("offer")) {
-                            Log.d(TAG, "connectToSignallingServer: received an offer " + isInitiator + " " + isStarted);
-                            if (!isInitiator && !isStarted) {
-                                maybeStart();
-                            }
-                            peerConnection.setRemoteDescription(new SimpleSdpObserver(), new SessionDescription(OFFER, message.getString("sdp")));
-                            doAnswer();
-                        } else if (message.getString("type").equals("answer") && isStarted) {
-                            peerConnection.setRemoteDescription(new SimpleSdpObserver(), new SessionDescription(ANSWER, message.getString("sdp")));
-                        } else if (message.getString("type").equals(CANDIDATE) && isStarted) {
-                            Log.d(TAG, "connectToSignallingServer: receiving candidates");
-                            IceCandidate candidate = new IceCandidate(message.getString("id"), message.getInt("label"), message.getString(CANDIDATE));
-                            peerConnection.addIceCandidate(candidate);
-                        }
-                    }
-                } catch (ClassNotFoundException | JSONException | IOException e) {
-                    isRunning = false;
-                    e.printStackTrace();
-                }
+        private void checkPacketMessage(String message){
+            if (message.equals("got user media")) {
+                maybeStart();
+            }
+        }
+
+        private void invokeMaybeStart(){
+            if (!isInitiator && !isStarted) {
+                maybeStart();
             }
         }
 
