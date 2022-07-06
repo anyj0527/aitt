@@ -73,4 +73,8 @@ task unzipMosquitto(type: Copy, dependsOn: downloadMosquitto) {
     onlyIf { !mosquittoDir.exists() }
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.1'
+}
+
 preBuild.dependsOn(unzipMosquitto)

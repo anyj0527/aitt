@@ -161,4 +161,8 @@ task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
     ]))
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.1'
+}
+
 build.dependsOn jacocoTestReport

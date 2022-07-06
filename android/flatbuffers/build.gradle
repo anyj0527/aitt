@@ -72,4 +72,8 @@ task unzipFlatBuffers(type: Copy, dependsOn: downloadFlatBuffers) {
     onlyIf { !flatbuffersDir.exists() }
 }
 
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.1'
+}
+
 preBuild.dependsOn(unzipFlatBuffers)
