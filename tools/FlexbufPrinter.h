@@ -15,17 +15,20 @@
  */
 #pragma once
 
-#ifdef API
-#undef API
-#endif
-#define API __attribute__((visibility("default")))
+#include <flatbuffers/flexbuffers.h>
 
-#define AITT_MANAGED_TOPIC_PREFIX "/v1/custom/aitt/"
-#define DISCOVERY_TOPIC_BASE std::string(AITT_MANAGED_TOPIC_PREFIX "discovery/")
-#define RESPONSE_POSTFIX "_AittRe_"
+class FlexbufPrinter {
+  public:
+    FlexbufPrinter();
 
-// Specification MQTT-4.7.3-3
-#define AITT_TOPIC_NAME_MAX 65535
+    void PrettyPrint(const std::string &name, const uint8_t *data, int datalen);
 
-// Specification MQTT-1.5.5
-#define AITT_PAYLOAD_MAX 268435455
+  private:
+    std::string PrettyTab(bool ignore);
+    void PrettyMap(const flexbuffers::Reference &data, bool inline_value);
+    void PrettyVector(const flexbuffers::Reference &data, bool inline_value);
+    void PrettyBlob(const flexbuffers::Reference &data, bool inline_value);
+    void PrettyParsing(const flexbuffers::Reference &data, bool inline_value);
+
+    int tab;
+};

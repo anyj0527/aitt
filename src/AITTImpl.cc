@@ -25,10 +25,8 @@
 
 #include "aitt_internal.h"
 
-#define DISCOVERY_TOPIC_BASE std::string(AITT_MANAGED_TOPIC_PREFIX "discovery/")
 #define WEBRTC_ROOM_ID_PREFIX std::string(AITT_MANAGED_TOPIC_PREFIX "webrtc/room/Room.webrtc")
 #define WEBRTC_ID_POSTFIX std::string("_for_webrtc")
-#define RESPONSE_POSTFIX "_AittRe_"
 
 namespace aitt {
 
