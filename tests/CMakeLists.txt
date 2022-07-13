@@ -18,7 +18,7 @@ ADD_TEST(
         ${AITT_UT}
     COMMAND
         ${CMAKE_COMMAND} -E env
-        LD_LIBRARY_PATH=../modules/tcp/:../:$ENV{LD_LIBRARY_PATH}
+        LD_LIBRARY_PATH=../modules/tcp/:../:../common/:$ENV{LD_LIBRARY_PATH}
         ${CMAKE_CURRENT_BINARY_DIR}/${AITT_UT} --gtest_filter=*_Anytime
 )
 
@@ -31,8 +31,8 @@ INSTALL(TARGETS ${AITT_UT}_manual DESTINATION ${AITT_TEST_BINDIR})
 
 ###########################################################################
 AUX_SOURCE_DIRECTORY(../mock MOCK_SRC)
-ADD_EXECUTABLE(${AITT_UT}_mq MQ_test.cc ${MOCK_SRC} $<TARGET_OBJECTS:MQ_OBJ>)
-TARGET_LINK_LIBRARIES(${AITT_UT}_mq ${UT_NEEDS_LIBRARIES} Threads::Threads ${AITT_NEEDS_LIBRARIES})
+ADD_EXECUTABLE(${AITT_UT}_mq MQ_test.cc ${MOCK_SRC})
+TARGET_LINK_LIBRARIES(${AITT_UT}_mq ${UT_NEEDS_LIBRARIES} Threads::Threads ${AITT_NEEDS_LIBRARIES} ${AITT_COMMON})
 TARGET_INCLUDE_DIRECTORIES(${AITT_UT}_mq PRIVATE ../src ../mock)
 INSTALL(TARGETS ${AITT_UT}_mq DESTINATION ${AITT_TEST_BINDIR})
 
@@ -41,6 +41,7 @@ ADD_TEST(
         ${AITT_UT}_mq
     COMMAND
         ${CMAKE_COMMAND} -E env
+        LD_LIBRARY_PATH=../common/:$ENV{LD_LIBRARY_PATH}
         ${CMAKE_CURRENT_BINARY_DIR}/${AITT_UT}_mq --gtest_filter=*_Anytime
 )
 
@@ -56,6 +57,6 @@ ADD_TEST(
         ${AITT_UT}_module
     COMMAND
         ${CMAKE_COMMAND} -E env
-        LD_LIBRARY_PATH=../modules/tcp/:../:$ENV{LD_LIBRARY_PATH}
+        LD_LIBRARY_PATH=../modules/tcp/:../:../common/:$ENV{LD_LIBRARY_PATH}
         ${CMAKE_CURRENT_BINARY_DIR}/${AITT_UT}_module --gtest_filter=*_Anytime
 )

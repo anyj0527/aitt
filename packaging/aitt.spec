@@ -22,6 +22,7 @@ BuildRequires: pkgconfig(gmock_main)
 BuildRequires: pkgconfig(capi-media-tool)
 BuildRequires: pkgconfig(capi-media-sound-manager)
 BuildRequires: pkgconfig(bundle)
+BuildRequires: elementary-tizen
 BuildRequires: pkgconfig(capi-media-webrtc)
 BuildRequires: pkgconfig(capi-media-camera)
 BuildRequires: pkgconfig(json-glib-1.0)
@@ -88,7 +89,7 @@ genhtml %{name}_gcov.info -o out --legend --show-details
 %if 0%{test}
 %{_bindir}/*
 %endif
-%{_libdir}/lib%{name}.so*
+%{_libdir}/lib%{name}*.so*
 %license LICENSE.APLv2
 
 %files plugins
