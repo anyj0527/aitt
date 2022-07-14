@@ -107,11 +107,11 @@ public class Aitt {
         void onMessageReceived(AittMessage message);
     }
 
-    public Aitt(Context appContext , String id) {
+    public Aitt(Context appContext , String id) throws InstantiationException {
         this(appContext , id, AITT_LOCALHOST, false);
     }
 
-    public Aitt(Context appContext, String id, String ip, boolean clearSession) {
+    public Aitt(Context appContext, String id, String ip, boolean clearSession) throws InstantiationException {
         if (appContext == null) {
             throw new IllegalArgumentException("Invalid appContext");
         }
@@ -120,7 +120,7 @@ public class Aitt {
         }
         instance = initJNI(id, ip, clearSession);
         if (instance == 0L) {
-            throw new RuntimeException("Failed to create native instance");
+            throw new InstantiationException("Failed to instantiate native instance");
         }
         this.ip = ip;
         this.appContext = appContext;
@@ -146,7 +146,7 @@ public class Aitt {
         try {
             close();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error during disconnect", e);
         }
     }
 
@@ -174,13 +174,13 @@ public class Aitt {
                     return;
                 }
                 HostTable hostTable = publishTable.get(topic);
-                for (String ip : hostTable.hostMap.keySet()) {
-                    PortTable portTable = hostTable.hostMap.get(ip);
+                for (String hostIp : hostTable.hostMap.keySet()) {
+                    PortTable portTable = hostTable.hostMap.get(hostIp);
                     for (Integer port : portTable.portMap.keySet()) {
                         Protocol protocol = portTable.portMap.get(port).first;
                         Object transportHandler = portTable.portMap.get(port).second;
                         if (protocol == Protocol.WEBRTC) {
-                            publishWebRTC(portTable, topic, transportHandler, ip, port, message);
+                            publishWebRTC(portTable, topic, transportHandler, hostIp, port, message);
                         } else {
                             int proto = protocolsToInt(protocols);
                             publishJNI(instance, topic, message, message.length, proto, qos.ordinal(), retain);
@@ -189,8 +189,7 @@ public class Aitt {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, "Couldnt publish to AITT C++");
+            Log.e(TAG, "Error during publish", e);
         }
     }
 
@@ -243,7 +242,7 @@ public class Aitt {
                 WebRTCServer ws = new WebRTCServer(appContext, dataType, cb);
                 int serverPort = ws.start();
                 if (serverPort < 0) {
-                    throw new RuntimeException("Failed to start webRTC server-socket");
+                    throw new IllegalArgumentException("Failed to start webRTC server-socket");
                 }
                 synchronized (this) {
                     subscribeMap.put(topic, new Pair(Protocol.WEBRTC, ws));
@@ -256,8 +255,7 @@ public class Aitt {
                 aittSubId.put(topic, pObject);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, "Couldnt subscribe to AITT C++");
+            Log.e(TAG, "Error during subscribe", e);
         }
         addCallBackToSubscribeMap(topic, callback);
     }
@@ -298,8 +296,7 @@ public class Aitt {
                     subscribeCallbacks.put(topic, cbList);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
-                Log.e(TAG, "Couldnt subscribe to AITT C++");
+                Log.e(TAG, "Error during callback add", e);
             }
         }
     }
@@ -337,8 +334,7 @@ public class Aitt {
                 aittSubId.remove(topic);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, "Exception during un subscribe to AITT C++");
+            Log.e(TAG, "Error during unsubscribe", e);
         }
     }
 
@@ -356,33 +352,36 @@ public class Aitt {
                 messageReceived(message);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error processing callback ", e);
         }
     }
 
+    /**
+     * This API is called when MQTT subscribe callback is invoked at aitt C++.
+     * It has discovery information in a "payload"
+     * @param payload
+     *  Flexbuffer discovery message expected
+     *           {
+     *             "status": "connected",
+     *             "host": "127.0.0.1",
+     *             "/customTopic/aitt/faceRecog": {
+     *                "protocol": 1,
+     *                "port": 108081,
+     *             },
+     *             "/customTopic/aitt/ASR": {
+     *                "protocol": 2,
+     *                "port": 102020,
+     *             },
+     *
+     *             ...
+     *
+     *              "/customTopic/aitt/+": {
+     *                "protocol": 3,
+     *                "port": 20123,
+     *             },
+     *            }
+     */
     private void discoveryMessageCallback(byte[] payload) {
-        /*
-           Flexbuffer discovery message expected
-          {
-            "status": "connected",
-            "host": "127.0.0.1",
-            "/customTopic/aitt/faceRecog": {
-               "protocol": 1,
-               "port": 108081,
-            },
-            "/customTopic/aitt/ASR": {
-               "protocol": 2,
-               "port": 102020,
-            },
-
-            ...
-
-             "/customTopic/aitt/+": {
-               "protocol": 3,
-               "port": 20123,
-            },
-           }
-        */
         try {
             ByteBuffer buffer = ByteBuffer.wrap(payload);
             FlexBuffers.Map map = FlexBuffers.getRoot(buffer).asMap();
@@ -414,8 +413,7 @@ public class Aitt {
                 updatePublishTable(_topic, host, port, protocol);
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, "Couldnt un subscribe to AITT C++");
+            Log.e(TAG, "Error during discovery callback processing", e);
         }
     }
 
@@ -462,8 +460,7 @@ public class Aitt {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, "Exception in messageReceived");
+            Log.e(TAG, "Error during messageReceived", e);
         }
     }
 

@@ -71,17 +71,13 @@ public class WebRTC {
     private VideoTrack videoTrackFromSource;
     private ObjectOutputStream outStream;
     private ObjectInputStream inputStream;
-    private Thread thread;
     private SDPThread sdpThread;
-
-    private EglBase mRootEglBase;
     private Context appContext;
     private DataChannel localDataChannel;
     private FrameVideoCapturer videoCapturer;
     private ReceiveDataCallback dataCallback;
     private String recieverIP;
     private Integer recieverPort;
-    private DataType dataType;
 
     public enum DataType{
         MESSAGE,
@@ -89,14 +85,12 @@ public class WebRTC {
     }
 
     public WebRTC(DataType dataType , Context appContext) {
-        this.dataType = dataType;
         this.appContext = appContext;
         this.isReciever = false;
     }
 
     WebRTC(DataType dataType , Context appContext , Socket socket) {
         Log.d(TAG , "InWebRTC Constructor");
-        this.dataType = dataType;
         this.appContext = appContext;
         this.socket = socket;
         this.isReciever = true;
@@ -123,7 +117,7 @@ public class WebRTC {
                         inputStream.close();
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error during disconnect", e);
                 }
             }).start();
         }
@@ -149,35 +143,7 @@ public class WebRTC {
         isInitiator = isReciever;
 
         sdpThread = new SDPThread();
-        thread = new Thread(sdpThread);
-        thread.start();
-    }
-
-    private void doAnswer() {
-        peerConnection.createAnswer(new SimpleSdpObserver() {
-            @Override
-            public void onCreateSuccess(SessionDescription sessionDescription) {
-                peerConnection.setLocalDescription(new SimpleSdpObserver(), sessionDescription);
-                JSONObject message = new JSONObject();
-                try {
-                    message.put("type", "answer");
-                    message.put("sdp", sessionDescription.description);
-                    sendMessage(true , message);
-                } catch (JSONException | IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }, new MediaConstraints());
-    }
-
-    private void maybeStart() {
-        Log.d(TAG, "maybeStart: " + isStarted + " " + isChannelReady);
-        if (!isStarted && isChannelReady) {
-            isStarted = true;
-            if (isInitiator) {
-                doCall();
-            }
-        }
+        new Thread(sdpThread).start();
     }
 
     private void doCall() {
@@ -195,7 +161,7 @@ public class WebRTC {
                     message.put("sdp", sessionDescription.description);
                     sendMessage(true , message);
                 } catch (JSONException | IOException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error during create offer", e);
                 }
             }
         }, sdpMediaConstraints);
@@ -254,6 +220,7 @@ public class WebRTC {
 
 
     private void initializePeerConnectionFactory() {
+        EglBase mRootEglBase;
         mRootEglBase = EglBase.create();
         VideoEncoderFactory encoderFactory = new DefaultVideoEncoderFactory(mRootEglBase.getEglBaseContext(), true /* enableIntelVp8Encoder */, true);
         VideoDecoderFactory decoderFactory = new DefaultVideoDecoderFactory(mRootEglBase.getEglBaseContext());
@@ -320,7 +287,7 @@ public class WebRTC {
                     Log.d(TAG, "onIceCandidate: sending candidate " + message);
                     sendMessage(true , message);
                 } catch (JSONException | IOException e) {
-                    e.printStackTrace();
+                    Log.e(TAG, "Error during onIceCandidate", e);
                 }
             }
 
@@ -506,13 +473,13 @@ public class WebRTC {
                     }
                 } catch (ClassNotFoundException | JSONException | IOException e) {
                     isRunning = false;
-                    e.printStackTrace();
+                    Log.e(TAG, "Error during JSON read", e);
                 }
             }
         }
 
-        private void decodeMessage(JSONObject message){
-            try{
+        private void decodeMessage(JSONObject message) {
+            try {
                 if (message.getString("type").equals("offer")) {
                     Log.d(TAG, "connectToSignallingServer: received an offer " + isInitiator + " " + isStarted);
                     invokeMaybeStart();
@@ -525,9 +492,26 @@ public class WebRTC {
                     IceCandidate candidate = new IceCandidate(message.getString("id"), message.getInt("label"), message.getString(CANDIDATE));
                     peerConnection.addIceCandidate(candidate);
                 }
-            }catch(JSONException e){
-                e.printStackTrace();
+            } catch (JSONException e) {
+                Log.e(TAG, "Error during message decoding", e);
             }
+        }
+
+        private void doAnswer() {
+            peerConnection.createAnswer(new SimpleSdpObserver() {
+                @Override
+                public void onCreateSuccess(SessionDescription sessionDescription) {
+                    peerConnection.setLocalDescription(new SimpleSdpObserver(), sessionDescription);
+                    JSONObject message = new JSONObject();
+                    try {
+                        message.put("type", "answer");
+                        message.put("sdp", sessionDescription.description);
+                        sendMessage(true, message);
+                    } catch (JSONException | IOException e) {
+                        Log.e(TAG, "Error during sdp answer", e);
+                    }
+                }
+            }, new MediaConstraints());
         }
 
         private void createSocket(){
@@ -538,7 +522,7 @@ public class WebRTC {
                 outStream = new ObjectOutputStream(socket.getOutputStream());
                 inputStream = new ObjectInputStream(socket.getInputStream());
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error during create socket", e);
             }
         }
 
@@ -546,7 +530,7 @@ public class WebRTC {
             try {
                 sendMessage(false , "got user media");
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error during invoke send message", e);
             }
         }
 
@@ -559,6 +543,16 @@ public class WebRTC {
         private void invokeMaybeStart(){
             if (!isInitiator && !isStarted) {
                 maybeStart();
+            }
+        }
+
+        private void maybeStart() {
+            Log.d(TAG, "maybeStart: " + isStarted + " " + isChannelReady);
+            if (!isStarted && isChannelReady) {
+                isStarted = true;
+                if (isInitiator) {
+                    doCall();
+                }
             }
         }
 

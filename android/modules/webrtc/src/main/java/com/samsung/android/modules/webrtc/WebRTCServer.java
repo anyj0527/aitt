@@ -16,6 +16,7 @@
 package com.samsung.android.modules.webrtc;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WebRTCServer {
+    private static final String TAG = "WebRTCServer";
     private WebRTC.DataType dataType;
     private ServerSocket serverSocket = null;
     private Context appContext;
@@ -43,7 +45,7 @@ public class WebRTCServer {
         try {
             serverSocket = new ServerSocket(0);
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error during start", e);
             return -1;
         }
         serverThread = new ServerThread();
@@ -61,7 +63,7 @@ public class WebRTCServer {
                 serverSocket.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Error during stop", e);
         }
         for(WebRTC web : connectionList){
             web.disconnect();
@@ -81,8 +83,8 @@ public class WebRTCServer {
                     web.registerDataCallback(dataCallback);
                     connectionList.add(web);
                 } catch (IOException e) {
-                    e.printStackTrace();
                     isRunning = false;
+                    Log.e(TAG, "Error during run", e);
                 }
             }
         }
