@@ -31,6 +31,14 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 
+/**
+ * Class creates a Java layer to operate between application and JNI layer for AITT C++
+ * 1. Connect to MQTT broker
+ * 2. Subscribe to a topic with protocol and other params
+ * 3. Publish to a topic using protocol and other params
+ * 4. Unsubscribe to a topic
+ * 5. Invoke JNI api's which interact with aitt c++
+ */
 public class Aitt {
     private static final String TAG = "AITT_ANDROID";
     private static final String WILL_LEAVE_NETWORK = "disconnected";
@@ -42,7 +50,9 @@ public class Aitt {
     private static final String INVALID_TOPIC = "Invalid topic";
     private static final String STATUS = "status";
 
-
+    /**
+     * Load aitt-android library
+     */
     static {
         try {
             System.loadLibrary("aitt-android");
@@ -62,12 +72,18 @@ public class Aitt {
     //ToDo - For now using sample app parameters, later fetch frameWidth & frameHeight from app
     private Integer frameWidth = 640, frameHeight = 480;
 
+    /**
+     * QoS levels to define the guarantee of delivery for a message
+     */
     public enum QoS {
         AT_MOST_ONCE,   // Fire and forget
         AT_LEAST_ONCE,  // Receiver is able to receive multiple times
         EXACTLY_ONCE,   // Receiver only receives exactly once
     }
 
+    /**
+     * List of protocols supported by AITT framework
+     */
     public enum Protocol {
         MQTT(0x1 << 0),    // Publish message through the MQTT
         TCP(0x1 << 1),     // Publish message to peers using the TCP
@@ -95,22 +111,43 @@ public class Aitt {
         }
     }
 
+    /**
+     * HostTable to store String and PortTable instances
+     */
     private class HostTable {
         HashMap<String, PortTable> hostMap = new HashMap<>();
     }
 
+    /**
+     * PortTable to store port with protocol, webRTC transportHandler object instance
+     */
     private class PortTable {
         HashMap<Integer, Pair<Protocol , Object>> portMap = new HashMap<>();
     }
 
+    /**
+     * Interface to implement callback method for subscribe call
+     */
     public interface SubscribeCallback {
         void onMessageReceived(AittMessage message);
     }
 
+    /**
+     * Aitt constructor to create AITT object
+     * @param appContext context of the application invoking the constructor
+     * @param id Unique identifier for the Aitt instance
+     */
     public Aitt(Context appContext , String id) throws InstantiationException {
         this(appContext , id, AITT_LOCALHOST, false);
     }
 
+    /**
+     * Aitt constructor to create AITT object
+     * @param appContext context of the application invoking the constructor
+     * @param id Unique identifier for the Aitt instance
+     * @param ip IP address of the device, on which application is running
+     * @param clearSession "clear" the current session when the client disconnects
+     */
     public Aitt(Context appContext, String id, String ip, boolean clearSession) throws InstantiationException {
         if (appContext == null) {
             throw new IllegalArgumentException("Invalid appContext");
@@ -126,10 +163,19 @@ public class Aitt {
         this.appContext = appContext;
     }
 
+    /**
+     * Method to connect to MQTT broker
+     * @param brokerIp Broker IP address to which, device has to connect
+     */
     public void connect(@Nullable String brokerIp) {
         connect(brokerIp, AITT_PORT);
     }
 
+    /**
+     * Method to connect to MQTT broker
+     * @param brokerIp Broker IP address to which, device has to connect
+     * @param port Broker port number to which, device has to connect
+     */
     public void connect(@Nullable String brokerIp, int port) {
         if (brokerIp == null || brokerIp.isEmpty()) {
             brokerIp = AITT_LOCALHOST;
@@ -139,6 +185,9 @@ public class Aitt {
         subscribeJNI(instance, JAVA_SPECIFIC_DISCOVERY_TOPIC, Protocol.MQTT.getValue(), QoS.EXACTLY_ONCE.ordinal());
     }
 
+    /**
+     * Method to disconnect from MQTT broker
+     */
     public void disconnect() {
         publishJNI(instance, JAVA_SPECIFIC_DISCOVERY_TOPIC, new byte[0], 0, Protocol.MQTT.getValue(), QoS.AT_LEAST_ONCE.ordinal(), true);
 
@@ -150,16 +199,37 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method to publish message to a specific topic
+     * @param topic String to which message needs to be published
+     * @param message Byte message that needs to be published
+     */
     public void publish(String topic, byte[] message) {
         EnumSet<Protocol> protocolSet = EnumSet.of(Protocol.MQTT);
         publish(topic, message, protocolSet, QoS.AT_MOST_ONCE, false);
     }
 
+    /**
+     * Method to publish message to a specific topic
+     * @param topic String to which message needs to be published
+     * @param message Byte message that needs to be published
+     * @param protocol Protocol to be used to publish message
+     * @param qos QoS at which the message should be delivered
+     * @param retain Boolean to decide whether or not the message should be retained by the broker
+     */
     public void publish(String topic, byte[] message, Protocol protocol, QoS qos, boolean retain) {
         EnumSet<Protocol> protocolSet = EnumSet.of(protocol);
         publish(topic, message, protocolSet, qos, retain);
     }
 
+    /**
+     * Method to publish message to a specific topic
+     * @param topic String to which message needs to be published
+     * @param message Byte message that needs to be published
+     * @param protocols Protocol to be used to publish message
+     * @param qos QoS at which the message should be delivered
+     * @param retain Boolean to decide whether or not the message should be retained by the broker
+     */
     public void publish(String topic, byte[] message, EnumSet<Protocol> protocols, QoS qos, boolean retain) {
         if (topic == null || topic.isEmpty()) {
             throw new IllegalArgumentException(INVALID_TOPIC);
@@ -193,6 +263,15 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method used to identify data type for webRTC channel and transfer data
+     * @param portTable portTable has information about port and associated protocol with transport Handler object
+     * @param topic The topic to which data is published
+     * @param transportHandler WebRTC object instance
+     * @param ip IP address of the destination
+     * @param port Port number of the destination
+     * @param message Data to be tranferred over WebRTC
+     */
     private void publishWebRTC(PortTable portTable, String topic, Object transportHandler, String ip, int port, byte[] message) {
         WebRTC.DataType dataType = topic.endsWith(RESPONSE_POSTFIX) ? WebRTC.DataType.MESSAGE : WebRTC.DataType.VIDEOFRAME;
         WebRTC webrtcHandler;
@@ -211,16 +290,35 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method to subscribe to a specific topic
+     * @param topic String to which applications can subscribe, to receive data
+     * @param callback Callback object specific to a subscribe call
+     */
     public void subscribe(String topic, SubscribeCallback callback) {
         EnumSet<Protocol> protocolSet = EnumSet.of(Protocol.MQTT);
         subscribe(topic, callback, protocolSet, QoS.AT_MOST_ONCE);
     }
 
+    /**
+     * Method to subscribe to a specific topic
+     * @param topic String to which applications can subscribe, to receive data
+     * @param callback Callback object specific to a subscribe call
+     * @param protocol Protocol supported by application, invoking subscribe
+     * @param qos QoS at which the message should be delivered
+     */
     public void subscribe(String topic, SubscribeCallback callback, Protocol protocol, QoS qos) {
         EnumSet<Protocol> protocolSet = EnumSet.of(protocol);
         subscribe(topic, callback, protocolSet, qos);
     }
 
+    /**
+     * Method to subscribe to a specific topic
+     * @param topic String to which applications can subscribe, to receive data
+     * @param callback Callback object specific to a subscribe call
+     * @param protocols Protocol supported by application, invoking subscribe
+     * @param qos QoS at which the message should be delivered
+     */
     public void subscribe(String topic, SubscribeCallback callback, EnumSet<Protocol> protocols, QoS qos) {
         if (topic == null || topic.isEmpty()) {
             throw new IllegalArgumentException(INVALID_TOPIC);
@@ -260,6 +358,12 @@ public class Aitt {
         addCallBackToSubscribeMap(topic, callback);
     }
 
+    /**
+     * Method to wrap topic, device IP address, webRTC server instance port number for publishing
+     * @param topic Topic to which the application has subscribed to
+     * @param serverPort Port number of the WebRTC server instance
+     * @return Byte data wrapped, contains topic, device IP, webRTC server port number
+     */
     private byte[] wrapPublishData(String topic, int serverPort) {
         FlexBuffersBuilder fbb = new FlexBuffersBuilder(ByteBuffer.allocate(512));
         {
@@ -280,6 +384,11 @@ public class Aitt {
         return data;
     }
 
+    /**
+     * Method to map subscribe callback instance to subscribing topic
+     * @param topic String to which application can subscribe
+     * @param callback Subscribe callback instance created during subscribe call
+     */
     private void addCallBackToSubscribeMap(String topic, SubscribeCallback callback) {
         synchronized (this) {
             try {
@@ -301,6 +410,10 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method to unsubscribe to a topic, subscribed by application
+     * @param topic String topic to which application had subscribed
+     */
     public void unsubscribe(String topic) {
         if (topic == null || topic.isEmpty()) {
             throw new IllegalArgumentException(INVALID_TOPIC);
@@ -338,6 +451,11 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method invoked from JNI layer to Java layer for message exchange
+     * @param topic Topic to which message callback is called
+     * @param payload Byte data shared from JNI layer to Java layer
+     */
     private void messageCallback(String topic, byte[] payload) {
         try {
             if (topic.compareTo(JAVA_SPECIFIC_DISCOVERY_TOPIC) == 0) {
@@ -380,6 +498,11 @@ public class Aitt {
      *                "port": 20123,
      *             },
      *            }
+    */
+    
+    /**
+     * Method to receive discovery message with device, protocol and other details and update publish table
+     * @param payload Byte data having discovery related message
      */
     private void discoveryMessageCallback(byte[] payload) {
         try {
@@ -417,6 +540,13 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method used to update Publish table of the application
+     * @param topic The topic to which, other parties have subscribed to
+     * @param host String which specifies a particular host
+     * @param port Port of the party which subscribed to given topic
+     * @param protocol protocol supported by the party which subscribed to given topic
+     */
     private void updatePublishTable(String topic, String host, int port, Protocol protocol) {
         synchronized(this) {
             if (!publishTable.containsKey(topic)) {
@@ -446,6 +576,10 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method that receives message from JNI layer for topics other than discovery topics
+     * @param message The data received from JNI layer to be sent to application layer
+     */
     private void messageReceived(AittMessage message) {
         try {
 
@@ -464,6 +598,11 @@ public class Aitt {
         }
     }
 
+    /**
+     * Method used to convert EnumSet protocol into int
+     * @param protocols List of protocols
+     * @return The protocol value
+     */
     private int protocolsToInt(EnumSet<Protocol> protocols) {
         int proto = 0;
         for (Protocol p : Protocol.values()) {
@@ -474,6 +613,9 @@ public class Aitt {
         return proto;
     }
 
+    /**
+     * Method to close all the callbacks and release resources
+     */
     public void close() {
         synchronized (this) {
             if(subscribeCallbacks!=null) {
@@ -488,17 +630,21 @@ public class Aitt {
     }
 
     /* native API's set */
-    /* API to initialize JNI */
+    /* Native API to initialize JNI */
     private native long initJNI(String id, String ip, boolean clearSession);
 
-    /* API's for Discovery using MQTT */
+    /* Native API for connecting to broker */
     private native void connectJNI(long instance, final String host, int port);
 
+    /* Native API for disconnecting from broker */
     private native void disconnectJNI(long instance);
 
+    /* Native API for publishing to a topic */
     private native void publishJNI(long instance, final String topic, final byte[] data, long datalen, int protocol, int qos, boolean retain);
 
+    /* Native API for subscribing to a topic */
     private native long subscribeJNI(long instance, final String topic, int protocol, int qos);
 
+    /* Native API for unsubscribing a topic */
     private native void unsubscribeJNI(long instance, final long aittSubId);
 }
