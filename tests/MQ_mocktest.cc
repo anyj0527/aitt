@@ -13,8 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "MQ.h"
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,8 +20,9 @@
 #include <mutex>
 
 #include "AittTypes.h"
+#include "MQ.h"
+#include "MQMockTest.h"
 #include "MQTTMock.h"
-#include "MQTTTest.h"
 
 using ::testing::Return;
 
@@ -34,7 +33,7 @@ using ::testing::Return;
 #define TEST_HOST "localhost"
 #define TEST_HANDLE reinterpret_cast<mosquitto *>(0xbeefbeef)
 
-TEST_F(MQTTTest, Negative_Create_lib_init_Anytime)
+TEST_F(MQMockTest, Negative_Create_lib_init_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_NOT_SUPPORTED));
     EXPECT_CALL(GetMock(), mosquitto_destroy(nullptr)).WillOnce(Return());
@@ -48,7 +47,7 @@ TEST_F(MQTTTest, Negative_Create_lib_init_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Negative_Create_new_Anytime)
+TEST_F(MQMockTest, Negative_Create_new_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -64,7 +63,7 @@ TEST_F(MQTTTest, Negative_Create_new_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Publish_Anytime)
+TEST_F(MQMockTest, Positive_Publish_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -88,7 +87,7 @@ TEST_F(MQTTTest, Positive_Publish_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Subscribe_Anytime)
+TEST_F(MQMockTest, Positive_Subscribe_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -116,7 +115,7 @@ TEST_F(MQTTTest, Positive_Subscribe_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Unsubscribe_Anytime)
+TEST_F(MQMockTest, Positive_Unsubscribe_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -148,7 +147,7 @@ TEST_F(MQTTTest, Positive_Unsubscribe_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Create_Anytime)
+TEST_F(MQMockTest, Positive_Create_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -167,7 +166,7 @@ TEST_F(MQTTTest, Positive_Create_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Negative_Connect_will_set_Anytime)
+TEST_F(MQMockTest, Negative_Connect_will_set_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -188,7 +187,7 @@ TEST_F(MQTTTest, Negative_Connect_will_set_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Connect_Anytime)
+TEST_F(MQMockTest, Positive_Connect_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))
@@ -206,7 +205,7 @@ TEST_F(MQTTTest, Positive_Connect_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Connect_User_Anytime)
+TEST_F(MQMockTest, Positive_Connect_User_Anytime)
 {
     std::string username = "test";
     std::string password = "test";
@@ -229,7 +228,7 @@ TEST_F(MQTTTest, Positive_Connect_User_Anytime)
     }
 }
 
-TEST_F(MQTTTest, Positive_Disconnect_Anytime)
+TEST_F(MQMockTest, Positive_Disconnect_Anytime)
 {
     EXPECT_CALL(GetMock(), mosquitto_lib_init()).WillOnce(Return(MOSQ_ERR_SUCCESS));
     EXPECT_CALL(GetMock(), mosquitto_new(testing::StrEq(TEST_CLIENT_ID), true, testing::_))

@@ -18,68 +18,23 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 #include <sys/random.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 #include <thread>
 
 #include "aitt_internal.h"
-
-#define TEST_MSG "This is my test message"
-#define TEST_MSG2 "This message is going to be delivered through a specified AittProtocol"
-#define MY_IP "127.0.0.1"
-#define SLEEP_MS 1
+#include "aitt_tests.h"
 
 using AITT = aitt::AITT;
 
-class AITTTest : public testing::Test {
-  public:
-    void ToggleReady() { ready = true; }
-    void ToggleReady2() { ready2 = true; }
-
-    void *subscribeHandle;
-    bool ready;
-    bool ready2;
-
+class AITTTest : public testing::Test, public AittTests {
   protected:
-    void SetUp() override
-    {
-        ready = false;
-        ready2 = false;
-        mainLoop = g_main_loop_new(nullptr, FALSE);
-        timeval tv;
-        char buffer[256];
-        gettimeofday(&tv, nullptr);
-        snprintf(buffer, sizeof(buffer), "UniqueID.%lX%lX", tv.tv_sec, tv.tv_usec);
-        clientId = buffer;
-        snprintf(buffer, sizeof(buffer), "TestTopic.%lX%lX", tv.tv_sec, tv.tv_usec);
-        testTopic = buffer;
-    }
-
-    void IterateEventLoop(void)
-    {
-        g_main_loop_run(mainLoop);
-        DBG("Go forward");
-    }
-
-    void TearDown() override { g_main_loop_unref(mainLoop); }
-
-    static gboolean ReadyCheck(gpointer data)
-    {
-        AITTTest *test = static_cast<AITTTest *>(data);
-
-        if (test->ready) {
-            g_main_loop_quit(test->mainLoop);
-            return FALSE;
-        }
-
-        return TRUE;
-    }
+    void SetUp() override { Init(); }
+    void TearDown() override { Deinit(); }
 
     void pubsub_template(const char *test_msg, AittProtocol protocol)
     {
         try {
-            AITT aitt(clientId, MY_IP, true);
+            AITT aitt(clientId, LOCAL_IP, true);
             aitt.Connect();
             aitt.Subscribe(
                   testTopic,
@@ -97,7 +52,7 @@ class AITTTest : public testing::Test {
             DBG("Publish(%s) : %s(%zu)", testTopic.c_str(), test_msg, strlen(test_msg));
             aitt.Publish(testTopic, test_msg, strlen(test_msg), protocol);
 
-            g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+            g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
             IterateEventLoop();
 
@@ -106,16 +61,12 @@ class AITTTest : public testing::Test {
             FAIL() << "Unexpected exception: " << e.what();
         }
     }
-
-    GMainLoop *mainLoop;
-    std::string clientId;
-    std::string testTopic;
 };
 
 TEST_F(AITTTest, Positive_Create_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
     }
@@ -124,7 +75,7 @@ TEST_F(AITTTest, Positive_Create_Anytime)
 TEST_F(AITTTest, UnsetConnectionCallback_P_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.SetConnectionCallback(
               [&](AITT &handle, int status, void *user_data) {
                   AITTTest *test = static_cast<AITTTest *>(user_data);
@@ -141,7 +92,7 @@ TEST_F(AITTTest, UnsetConnectionCallback_P_Anytime)
               this);
         aitt.Connect();
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
         sleep(1);
@@ -155,7 +106,7 @@ TEST_F(AITTTest, UnsetConnectionCallback_P_Anytime)
 TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.SetConnectionCallback(
               [&](AITT &handle, int status, void *user_data) {
                   AITTTest *test = static_cast<AITTTest *>(user_data);
@@ -172,7 +123,7 @@ TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
               this);
         aitt.Connect();
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
         ASSERT_TRUE(ready);
@@ -185,7 +136,7 @@ TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
 TEST_F(AITTTest, Positive_Connect_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
@@ -195,7 +146,7 @@ TEST_F(AITTTest, Positive_Connect_Anytime)
 TEST_F(AITTTest, Positive_Disconnect_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Disconnect();
     } catch (std::exception &e) {
@@ -206,7 +157,7 @@ TEST_F(AITTTest, Positive_Disconnect_Anytime)
 TEST_F(AITTTest, Positive_Connect_twice_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Disconnect();
         aitt.Connect();
@@ -218,7 +169,7 @@ TEST_F(AITTTest, Positive_Connect_twice_Anytime)
 TEST_F(AITTTest, Positive_Publish_MQTT_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG));
     } catch (std::exception &e) {
@@ -229,7 +180,7 @@ TEST_F(AITTTest, Positive_Publish_MQTT_Anytime)
 TEST_F(AITTTest, Positive_Publish_TCP_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG), AITT_TYPE_TCP);
     } catch (std::exception &e) {
@@ -240,7 +191,7 @@ TEST_F(AITTTest, Positive_Publish_TCP_Anytime)
 TEST_F(AITTTest, Positive_Publish_Multiple_Protocols_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG),
               (AittProtocol)(AITT_TYPE_MQTT | AITT_TYPE_TCP));
@@ -252,7 +203,7 @@ TEST_F(AITTTest, Positive_Publish_Multiple_Protocols_Anytime)
 TEST_F(AITTTest, Positive_Subscribe_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
@@ -266,7 +217,7 @@ TEST_F(AITTTest, Positive_Subscribe_Anytime)
 TEST_F(AITTTest, Positive_Unsubscribe_MQTT_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         subscribeHandle = aitt.Subscribe(
               testTopic,
@@ -282,7 +233,7 @@ TEST_F(AITTTest, Positive_Unsubscribe_MQTT_Anytime)
 TEST_F(AITTTest, Positive_Unsubscribe_TCP_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         subscribeHandle = aitt.Subscribe(
               testTopic,
@@ -308,7 +259,7 @@ TEST_F(AITTTest, Positve_Publish_0_MQTT_Anytime)
 TEST_F(AITTTest, Positve_Unsubscribe_in_Subscribe_MQTT_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         subscribeHandle = aitt.Subscribe(
               testTopic,
@@ -330,7 +281,56 @@ TEST_F(AITTTest, Positve_Unsubscribe_in_Subscribe_MQTT_Anytime)
         DBG("Publish message to %s (%s)", testTopic.c_str(), TEST_MSG);
         aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG));
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
+
+        IterateEventLoop();
+
+        ASSERT_TRUE(ready);
+    } catch (std::exception &e) {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+}
+
+TEST_F(AITTTest, Positve_Subscribe_in_Subscribe_MQTT_Anytime)
+{
+    try {
+        AITT aitt(clientId, LOCAL_IP, true);
+        aitt.Connect();
+        subscribeHandle = aitt.Subscribe(
+              testTopic,
+              [&](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) -> void {
+                  DBG("Subscribe invoked: %s %zu", static_cast<const char *>(msg), szmsg);
+
+                  static int cnt = 0;
+                  ++cnt;
+                  if (cnt == 2)
+                      FAIL() << "Should not be called";
+
+                  aitt.Subscribe(
+                        "topic1InCallback",
+                        [](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) {},
+                        cbdata);
+
+                  aitt.Subscribe(
+                        "topic2InCallback",
+                        [](aitt::MSG *handle, const void *msg, const size_t szmsg, void *cbdata) {},
+                        cbdata);
+                  DBG("Ready flag is toggled");
+                  g_timeout_add(
+                        100,
+                        [](gpointer data) -> gboolean {
+                            AITTTest *test = static_cast<AITTTest *>(data);
+                            test->ToggleReady();
+                            return G_SOURCE_REMOVE;
+                        },
+                        cbdata);
+              },
+              static_cast<void *>(this));
+
+        DBG("Publish message to %s (%s)", testTopic.c_str(), TEST_MSG);
+        aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG));
+
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 
@@ -353,7 +353,7 @@ TEST_F(AITTTest, Positve_Publish_0_TCP_Anytime)
 TEST_F(AITTTest, Positve_PublishSubscribe_Multiple_Protocols_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
@@ -381,7 +381,7 @@ TEST_F(AITTTest, Positve_PublishSubscribe_Multiple_Protocols_Anytime)
         aitt.Publish(testTopic, TEST_MSG, sizeof(TEST_MSG),
               (AittProtocol)(AITT_TYPE_MQTT | AITT_TYPE_TCP));
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 
@@ -395,7 +395,7 @@ TEST_F(AITTTest, Positve_PublishSubscribe_Multiple_Protocols_Anytime)
 TEST_F(AITTTest, Positve_PublishSubscribe_twice_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP);
+        AITT aitt(clientId, LOCAL_IP);
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
@@ -422,7 +422,7 @@ TEST_F(AITTTest, Positve_PublishSubscribe_twice_Anytime)
         // Publish message through the specified protocol - TCP
         aitt.Publish(testTopic, TEST_MSG2, sizeof(TEST_MSG2), AITT_TYPE_TCP);
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 
@@ -435,7 +435,7 @@ TEST_F(AITTTest, Positve_PublishSubscribe_twice_Anytime)
 TEST_F(AITTTest, Positive_Subscribe_Retained_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP);
+        AITT aitt(clientId, LOCAL_IP);
         aitt.Connect();
         aitt.Subscribe(
               testTopic,
@@ -460,7 +460,7 @@ TEST_F(AITTTest, Positive_Subscribe_Retained_Anytime)
 
         aitt.Publish(testTopic, TEST_MSG2, sizeof(TEST_MSG2), AITT_TYPE_TCP);
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 
@@ -482,8 +482,8 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
             dump_msg_size = 62;
         }
 
-        AITT aitt(clientId, MY_IP);
-        AITT aitt_retry("retry_test", MY_IP);
+        AITT aitt(clientId, LOCAL_IP);
+        AITT aitt_retry("retry_test", LOCAL_IP);
         aitt.Connect();
         aitt_retry.Connect();
 
@@ -504,7 +504,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
               static_cast<void *>(this), AITT_TYPE_TCP);
 
         {
-            AITT aitt1("stress_test1", MY_IP);
+            AITT aitt1("stress_test1", LOCAL_IP);
             aitt1.Connect();
 
             // Wait a few seconds to the AITT client gets server list (discover devices)
@@ -515,7 +515,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
                 aitt1.Publish("test/stress1", dump_msg, dump_msg_size, AITT_TYPE_TCP,
                       AITT_QOS_AT_MOST_ONCE, true);
             }
-            g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+            g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
             IterateEventLoop();
         }
@@ -530,7 +530,7 @@ TEST_F(AITTTest, TCP_Publish_Disconnect_Anytime)
         aitt_retry.Publish("test/stress1", dump_msg, dump_msg_size, AITT_TYPE_TCP,
               AITT_QOS_AT_MOST_ONCE, true);
 
-        g_timeout_add(10, AITTTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 
@@ -547,7 +547,7 @@ TEST_F(AITTTest, WillSet_N_Anytime)
 {
     EXPECT_THROW(
           {
-              AITT aitt_will("", MY_IP, true);
+              AITT aitt_will("", LOCAL_IP, true);
               aitt_will.SetWillInfo("+", "will msg", 8, AITT_QOS_AT_MOST_ONCE, false);
               aitt_will.Connect();
               aitt_will.Disconnect();

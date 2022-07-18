@@ -19,7 +19,7 @@
 
 #include "MQTTMock.h"
 
-class MQTTTest : public ::testing::Test {
+class MQMockTest : public ::testing::Test {
   protected:
     void SetUp() override { mqttMock = new MQTTMock; }
 

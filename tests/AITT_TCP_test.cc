@@ -15,69 +15,19 @@
  */
 #include <glib.h>
 #include <gtest/gtest.h>
-#include <sys/random.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 #include <thread>
 
 #include "AITT.h"
 #include "aitt_internal.h"
-
-#define TEST_MSG "This is my test message"
-#define TEST_MSG2 "This message is going to be delivered through a specified AittProtocol"
-#define MY_IP "127.0.0.1"
-#define SLEEP_MS 1
+#include "aitt_tests.h"
 
 using AITT = aitt::AITT;
 
-class AITTTCPTest : public testing::Test {
-  public:
-    void ToggleReady() { ready = true; }
-    void ToggleReady2() { ready2 = true; }
-
-    void *subscribeHandle;
-    bool ready;
-    bool ready2;
-
+class AITTTCPTest : public testing::Test, public AittTests {
   protected:
-    void SetUp() override
-    {
-        ready = false;
-        ready2 = false;
-        mainLoop = g_main_loop_new(nullptr, FALSE);
-        timeval tv;
-        char buffer[256];
-        gettimeofday(&tv, nullptr);
-        snprintf(buffer, sizeof(buffer), "UniqueID.%lX%lX", tv.tv_sec, tv.tv_usec);
-        clientId = buffer;
-        snprintf(buffer, sizeof(buffer), "TestTopic.%lX%lX", tv.tv_sec, tv.tv_usec);
-        testTopic = buffer;
-    }
-
-    void IterateEventLoop(void)
-    {
-        g_main_loop_run(mainLoop);
-        DBG("Go forward");
-    }
-
-    void TearDown() override { g_main_loop_unref(mainLoop); }
-
-    static gboolean ReadyCheck(gpointer data)
-    {
-        AITTTCPTest *test = static_cast<AITTTCPTest *>(data);
-
-        if (test->ready) {
-            g_main_loop_quit(test->mainLoop);
-            return FALSE;
-        }
-
-        return TRUE;
-    }
-
-    GMainLoop *mainLoop;
-    std::string clientId;
-    std::string testTopic;
+    void SetUp() override { Init(); }
+    void TearDown() override { Deinit(); }
 };
 
 TEST_F(AITTTCPTest, TCP_Wildcards1_Anytime)
@@ -85,7 +35,7 @@ TEST_F(AITTTCPTest, TCP_Wildcards1_Anytime)
     try {
         char dump_msg[204800];
 
-        AITT aitt(clientId, MY_IP);
+        AITT aitt(clientId, LOCAL_IP);
         aitt.Connect();
 
         aitt.Subscribe(
@@ -108,7 +58,7 @@ TEST_F(AITTTCPTest, TCP_Wildcards1_Anytime)
         aitt.Publish("test/step2/value1", dump_msg, 1600, AITT_TYPE_TCP);
         aitt.Publish("test/step2/value1", dump_msg, 1600, AITT_TYPE_TCP);
 
-        g_timeout_add(10, AITTTCPTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 
@@ -123,7 +73,7 @@ TEST_F(AITTTCPTest, TCP_Wildcards2_Anytime)
     try {
         char dump_msg[204800];
 
-        AITT aitt(clientId, MY_IP);
+        AITT aitt(clientId, LOCAL_IP);
         aitt.Connect();
 
         aitt.Subscribe(
@@ -151,7 +101,7 @@ TEST_F(AITTTCPTest, TCP_Wildcards2_Anytime)
         aitt.Publish("test/value2", dump_msg, 1600, AITT_TYPE_TCP);
         aitt.Publish("test/value3", dump_msg, 1600, AITT_TYPE_TCP);
 
-        g_timeout_add(10, AITTTCPTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
 
         IterateEventLoop();
 

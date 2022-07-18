@@ -18,9 +18,7 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 
-#define LOCAL_IP "127.0.0.1"
-#define TEST_C_TOPIC "test/topic_c"
-#define TEST_C_MSG "test123456789"
+#include "aitt_tests.h"
 
 TEST(AITT_C_MANUAL, will_set_P)
 {

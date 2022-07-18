@@ -15,18 +15,16 @@
  */
 #include <glib.h>
 #include <gtest/gtest.h>
-#include <sys/time.h>
-#include <unistd.h>
 
 #include <iostream>
 
 #include "AITT.h"
 #include "aitt_internal.h"
+#include "aitt_tests.h"
 
-#define MY_IP "127.0.0.1"
 using AITT = aitt::AITT;
 
-class AITTRRTest : public testing::Test {
+class AITTRRTest : public testing::Test, public AittTests {
   public:
     void PublishSyncInCallback(aitt::AITT *aitt, bool *reply1_ok, bool *reply2_ok, aitt::MSG *msg,
           const void *data, const size_t datalen, void *cbdata)
@@ -56,22 +54,9 @@ class AITTRRTest : public testing::Test {
     }
 
   protected:
-    void SetUp() override
-    {
-        ready = false;
-        mainLoop = g_main_loop_new(nullptr, FALSE);
-        timeval tv;
-        char buffer[256];
-        gettimeofday(&tv, nullptr);
-        snprintf(buffer, sizeof(buffer), "UniqueID.%lX%lX", tv.tv_sec, tv.tv_usec);
-        clientId = buffer;
-    }
+    void SetUp() override { Init(); }
+    void TearDown() override { Deinit(); }
 
-    void TearDown() override { g_main_loop_unref(mainLoop); }
-
-    void ToggleReady() { ready = true; }
-
-    void IterateEventLoop(void) { g_main_loop_run(mainLoop); }
     void CheckReply(aitt::MSG *msg, const void *data, const size_t datalen)
     {
         std::string received_data((const char *)data, datalen);
@@ -95,7 +80,7 @@ class AITTRRTest : public testing::Test {
         bool reply_ok[2];
         sub_ok = reply_ok[0] = reply_ok[1] = false;
 
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         aitt.Subscribe(rr_topic.c_str(),
@@ -124,7 +109,7 @@ class AITTRRTest : public testing::Test {
             }
         }
 
-        g_timeout_add(10, AITTRRTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
         IterateEventLoop();
 
         EXPECT_TRUE(sub_ok);
@@ -137,7 +122,7 @@ class AITTRRTest : public testing::Test {
         bool sub_ok, reply1_ok, reply2_ok;
         sub_ok = reply1_ok = reply2_ok = false;
 
-        AITT sub_aitt(clientId + "sub", MY_IP, true);
+        AITT sub_aitt(clientId + "sub", LOCAL_IP, true);
         INFO("Constructor Success");
 
         sub_aitt.Connect();
@@ -150,7 +135,7 @@ class AITTRRTest : public testing::Test {
                   sub_ok = true;
               });
 
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         using namespace std::placeholders;
@@ -165,7 +150,7 @@ class AITTRRTest : public testing::Test {
                   AITT_QOS_AT_MOST_ONCE, false, replyCB, nullptr, correlation);
         }
 
-        g_timeout_add(10, AITTRRTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
         IterateEventLoop();
 
         EXPECT_TRUE(sub_ok);
@@ -173,23 +158,8 @@ class AITTRRTest : public testing::Test {
         EXPECT_TRUE(reply2_ok);
     }
 
-    static gboolean ReadyCheck(gpointer data)
-    {
-        AITTRRTest *test = static_cast<AITTRRTest *>(data);
-
-        if (test->ready) {
-            g_main_loop_quit(test->mainLoop);
-            return FALSE;
-        }
-
-        return TRUE;
-    }
-
     AITTRRTest *GetHandle() { return this; }
 
-    bool ready;
-    GMainLoop *mainLoop;
-    std::string clientId;
     const std::string rr_topic = "test/rr_topic";
     const std::string message = "Hello world";
     const std::string correlation = "0001";
@@ -202,7 +172,7 @@ TEST_F(AITTRRTest, RequestResponse_P_Anytime)
     sub_ok = reply_ok = false;
 
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         aitt.Subscribe(rr_topic.c_str(),
@@ -219,7 +189,7 @@ TEST_F(AITTRRTest, RequestResponse_P_Anytime)
                     std::placeholders::_4),
               nullptr, correlation);
 
-        g_timeout_add(10, AITTRRTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
         IterateEventLoop();
 
         EXPECT_TRUE(sub_ok);
@@ -239,7 +209,7 @@ TEST_F(AITTRRTest, RequestResponse_asymmetry_Anytime)
     sub_ok = reply_ok = false;
 
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         aitt.Subscribe(rr_topic.c_str(),
@@ -279,7 +249,7 @@ TEST_F(AITTRRTest, RequestResponse_asymmetry_Anytime)
               },
               nullptr, correlation);
 
-        g_timeout_add(10, AITTRRTest::ReadyCheck, static_cast<void *>(this));
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
         IterateEventLoop();
 
         EXPECT_TRUE(sub_ok);
@@ -307,7 +277,7 @@ TEST_F(AITTRRTest, RequestResponse_sync_P_Anytime)
     sub_ok = reply1_ok = false;
 
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         aitt.Subscribe(rr_topic.c_str(),
@@ -365,7 +335,7 @@ TEST_F(AITTRRTest, RequestResponse_sync_in_sync_P_Anytime)
 TEST_F(AITTRRTest, RequestResponse_timeout_P_Anytime)
 {
     try {
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         int ret = aitt.PublishWithReplySync(
@@ -388,7 +358,7 @@ TEST_F(AITTRRTest, RequestResponse_timeout_restart_P_Anytime)
     sub_ok = reply_ok = false;
 
     try {
-        AITT sub_aitt(clientId + "sub", MY_IP, true);
+        AITT sub_aitt(clientId + "sub", LOCAL_IP, true);
         sub_aitt.Connect();
         sub_aitt.Subscribe(rr_topic.c_str(),
               [&](aitt::MSG *msg, const void *data, const size_t datalen, void *cbdata) {
@@ -398,7 +368,7 @@ TEST_F(AITTRRTest, RequestResponse_timeout_restart_P_Anytime)
                   sub_ok = true;
               });
 
-        AITT aitt(clientId, MY_IP, true);
+        AITT aitt(clientId, LOCAL_IP, true);
         aitt.Connect();
 
         int ret = aitt.PublishWithReplySync(

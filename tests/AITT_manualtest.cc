@@ -19,46 +19,14 @@
 #include <gtest/gtest.h>
 
 #include "aitt_internal.h"
-
-#define TEST_MSG "This is my test message"
-#define LOCAL_IP "127.0.0.1"
+#include "aitt_tests.h"
 
 using AITT = aitt::AITT;
 
-class AITTManualTest : public testing::Test {
-  public:
-    void ToggleReady() { ready = true; }
-
-    bool ready;
-
+class AITTManualTest : public testing::Test, public AittTests {
   protected:
-    void SetUp() override
-    {
-        ready = false;
-        mainLoop = g_main_loop_new(nullptr, FALSE);
-    }
-
-    void IterateEventLoop(void)
-    {
-        g_main_loop_run(mainLoop);
-        DBG("Go forward");
-    }
-
-    void TearDown() override { g_main_loop_unref(mainLoop); }
-
-    static gboolean ReadyCheck(gpointer data)
-    {
-        AITTManualTest *test = static_cast<AITTManualTest *>(data);
-
-        if (test->ready) {
-            g_main_loop_quit(test->mainLoop);
-            return FALSE;
-        }
-
-        return TRUE;
-    }
-
-    GMainLoop *mainLoop;
+    void SetUp() override { Init(); }
+    void TearDown() override { Deinit(); }
 };
 
 TEST_F(AITTManualTest, WillSet_P)
@@ -87,7 +55,7 @@ TEST_F(AITTManualTest, WillSet_P)
             sleep(1);
             kill(pid, SIGKILL);
 
-            g_timeout_add(10, AITTManualTest::ReadyCheck, static_cast<void *>(this));
+            g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
             IterateEventLoop();
 
             ASSERT_TRUE(ready);
