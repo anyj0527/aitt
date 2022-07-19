@@ -16,352 +16,393 @@
 package com.samsung.android.aitt;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 
 import android.content.Context;
-import android.util.Log;
-
-import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.EnumSet;
-@RunWith(RobolectricTestRunner.class)
-@Config(shadows = ShadowAitt.class)
-public class AittUnitTest {
-   private static final String TAG = "AITTUnitTest";
-   private String id = "id101";
-   private String ip = "127.0.0.1";
-   @Mock
-   private Context appContext = ApplicationProvider.getApplicationContext();
-   private String brokerIp = "192.168.0.1";
-   private int port = 1803;
-   private String topic = "aitt/test";
-   private String message = "test message";
 
-   @Test
-   public void testInitialize() {
-      Aitt aitt = null;
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(Aitt.class)
+public class AittUnitTest {
+   @Mock
+   private Context appContext = mock(Context.class);
+
+   private final String brokerIp = "192.168.0.1";
+   private final int port = 1803;
+   private final String topic = "aitt/test";
+   private final String message = "test message";
+
+   private static void initialize(Aitt aitt) {
       try {
-         aitt = new Aitt(appContext, id, ip, false);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testInitialize", e);
+         PowerMockito.when(aitt, "initJNI", anyString(), anyString(), anyBoolean()).thenReturn(1L);
+         PowerMockito.doNothing().when(aitt, "connectJNI", anyLong(), anyString(), anyInt());
+         PowerMockito.doNothing().when(aitt, "disconnectJNI", anyLong());
+         PowerMockito.doNothing().when(aitt, "publishJNI", anyLong(), anyString(), any(byte[].class), anyLong(), anyInt(), anyInt(), anyBoolean());
+         PowerMockito.when(aitt, "subscribeJNI", anyLong(), anyString(), anyInt(), anyInt()).thenReturn(1L);
+         PowerMockito.doNothing().when(aitt, "unsubscribeJNI", anyLong(), anyLong());
+      } catch (Exception e) {
+         fail("Failed to mock Aitt " + e);
       }
-      assertNotNull(aitt);
-      aitt.close();
    }
 
    @Test
-   public void testInitializeOnlyId() {
-      Aitt aitt = null;
+   public void testInitialize() {
       try {
-         aitt = new Aitt(appContext, id);
-         assertNotNull(aitt);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
          aitt.close();
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testInitializeOnlyId", e);
+      } catch (Exception e) {
+         fail("Failed testInitialize " + e);
       }
    }
 
    @Test(expected = IllegalArgumentException.class)
    public void testInitializeInvalidId() {
       String _id = "";
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, _id);
+         Aitt aitt = new Aitt(appContext, _id);
          aitt.close();
       } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testInitializeInvalidId", e);
+         fail("Error during testInitializeInvalidId" + e);
       }
    }
 
    @Test(expected = IllegalArgumentException.class)
    public void testInitializeInvalidContext() {
       String _id = "";
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(null, _id);
+         Aitt aitt = new Aitt(null, _id);
          aitt.close();
       } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testInitializeInvalidContext", e);
+         fail( "Error during testInitializeInvalidContext" + e);
       }
    }
 
    @Test
    public void testConnect() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testConnect", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         aitt.close();
+      } catch(Exception e) {
+         fail("Failed testConnect " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      aitt.close();
    }
 
    @Test
    public void testConnectWithoutIP() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testConnectWithoutIP", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(null);
+
+         aitt.close();
+      } catch (Exception e) {
+         fail("Failed testConnectWithoutIP " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(null);
-      aitt.close();
    }
 
    @Test
    public void testDisconnect() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testDisconnect", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testDisconnect " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      aitt.disconnect();
-      aitt.close();
    }
 
    @Test
    public void testPublishMqtt() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testPublishMqtt", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         byte[] payload = message.getBytes();
+         aitt.publish(topic, payload);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testPublishMqtt " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      byte[] payload = message.getBytes();
-      aitt.publish(topic, payload);
-      aitt.close();
    }
 
    @Test
    public void testPublishWebRTC() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testPublishWebRTC", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         byte[] payload = message.getBytes();
+         aitt.publish(topic, payload, Aitt.Protocol.WEBRTC, Aitt.QoS.AT_MOST_ONCE, false);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testPublishWebRTC " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      byte[] payload = message.getBytes();
-      aitt.publish(topic, payload, Aitt.Protocol.WEBRTC, Aitt.QoS.AT_MOST_ONCE, false);
-      aitt.close();
    }
 
-   @Test(expected = IllegalArgumentException.class)
-   public void testPublishInvalidTopic() {
-      Aitt aitt = null;
+   @Test
+   public void testPublishInvalidTopic() throws IllegalArgumentException {
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testPublishInvalidTopic", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         String _topic = "";
+         byte[] payload = message.getBytes();
+         aitt.publish(_topic, payload);
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testPublishInvalidTopic " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      String _topic = "";
-      byte[] payload = message.getBytes();
-      aitt.publish(_topic, payload);
-      aitt.close();
    }
 
    @Test
    public void testPublishAnyProtocol() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testPublishAnyProtocol", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         byte[] payload = message.getBytes();
+         aitt.publish(topic, payload, Aitt.Protocol.TCP, Aitt.QoS.AT_LEAST_ONCE, false);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testPublishAnyProtocol " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      byte[] payload = message.getBytes();
-      aitt.publish(topic, payload, Aitt.Protocol.TCP, Aitt.QoS.AT_LEAST_ONCE, false);
-      aitt.close();
    }
 
    @Test
    public void testPublishProtocolSet() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testPublishProtocolSet", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         byte[] payload = message.getBytes();
+         EnumSet<Aitt.Protocol> protocols = EnumSet.of(Aitt.Protocol.MQTT, Aitt.Protocol.TCP);
+         aitt.publish(topic, payload, protocols, Aitt.QoS.AT_MOST_ONCE, false);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testPublishProtocolSet " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      byte[] payload = message.getBytes();
-      EnumSet<Aitt.Protocol> protocols = EnumSet.of(Aitt.Protocol.MQTT, Aitt.Protocol.TCP);
-      aitt.publish(topic, payload, protocols, Aitt.QoS.AT_MOST_ONCE, false);
-      aitt.close();
    }
 
    @Test
    public void testSubscribeMqtt() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testSubscribeMqtt", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+            @Override
+            public void onMessageReceived(AittMessage message) {
+               String _topic = message.getTopic();
+               byte[] payload = message.getPayload();
+            }
+         });
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSubscribeMqtt " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      aitt.subscribe(topic, new Aitt.SubscribeCallback() {
-         @Override
-         public void onMessageReceived(AittMessage message) {
-            String _topic = message.getTopic();
-            byte[] payload = message.getPayload();
-            String correlation = message.getCorrelation();
-         }
-      });
-      aitt.close();
    }
 
    @Test
    public void testSubscribeWebRTC() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testSubscribeWebRTC", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+                    @Override
+                    public void onMessageReceived(AittMessage message) {
+                       String _topic = message.getTopic();
+                       byte[] payload = message.getPayload();
+                    }
+                 },
+                 Aitt.Protocol.WEBRTC, Aitt.QoS.AT_MOST_ONCE);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSubscribeWebRTC " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-
-      aitt.subscribe(topic, new Aitt.SubscribeCallback() {
-                 @Override
-                 public void onMessageReceived(AittMessage message) {
-                    String _topic = message.getTopic();
-                    byte[] payload = message.getPayload();
-                    String correlation = message.getCorrelation();
-                 }
-              },
-              Aitt.Protocol.WEBRTC, Aitt.QoS.AT_MOST_ONCE);
-
-      aitt.close();
    }
 
-   @Test(expected = IllegalArgumentException.class)
-   public void testSubscribeInvalidTopic() {
-      Aitt aitt = null;
+   @Test
+   public void testSubscribeInvalidTopic() throws IllegalArgumentException {
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testSubscribeInvalidTopic", e);
-      }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      String _topic = "";
-      aitt.subscribe(_topic, new Aitt.SubscribeCallback() {
-         @Override
-         public void onMessageReceived(AittMessage message) {}
-      });
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
 
-      aitt.close();
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         String _topic = "";
+         aitt.subscribe(_topic, new Aitt.SubscribeCallback() {
+            @Override
+            public void onMessageReceived(AittMessage message) {
+            }
+         });
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSubscribeInvalidTopic " + e);
+      }
    }
 
-   @Test(expected = IllegalArgumentException.class)
-   public void testSubscribeInvalidCallback() {
-      Aitt aitt = null;
+   @Test
+   public void testSubscribeInvalidCallback() throws IllegalArgumentException {
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testSubscribeInvalidCallback", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         String _topic = "";
+         aitt.subscribe(_topic, null);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSubscribeInvalidCallback " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      String _topic = "";
-      aitt.subscribe(_topic, null);
-      aitt.close();
    }
 
    @Test
    public void testSubscribeAnyProtocol() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testSubscribeAnyProtocol", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+                    @Override
+                    public void onMessageReceived(AittMessage message) {
+                       String _topic = message.getTopic();
+                       byte[] payload = message.getPayload();
+                    }
+                 },
+                 Aitt.Protocol.UDP, Aitt.QoS.AT_MOST_ONCE);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSubscribeAnyProtocol " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      aitt.subscribe(topic, new Aitt.SubscribeCallback() {
-                 @Override
-                 public void onMessageReceived(AittMessage message) {
-                    String _topic = message.getTopic();
-                    byte[] payload = message.getPayload();
-                    String correlation = message.getCorrelation();
-                 }
-              },
-              Aitt.Protocol.UDP, Aitt.QoS.AT_MOST_ONCE);
-      aitt.close();
    }
 
    @Test
    public void testSubscribeProtocolSet() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testSubscribeProtocolSet", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         EnumSet<Aitt.Protocol> protocols = EnumSet.of(Aitt.Protocol.MQTT, Aitt.Protocol.TCP);
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+                    @Override
+                    public void onMessageReceived(AittMessage message) {
+                       String _topic = message.getTopic();
+                       byte[] payload = message.getPayload();
+                    }
+                 },
+                 protocols, Aitt.QoS.EXACTLY_ONCE);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSubscribeProtocolSet " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      EnumSet<Aitt.Protocol> protocols = EnumSet.of(Aitt.Protocol.MQTT, Aitt.Protocol.TCP);
-      aitt.subscribe(topic, new Aitt.SubscribeCallback() {
-                 @Override
-                 public void onMessageReceived(AittMessage message) {
-                    String _topic = message.getTopic();
-                    byte[] payload = message.getPayload();
-                    String correlation = message.getCorrelation();
-                 }
-              },
-              protocols, Aitt.QoS.EXACTLY_ONCE);
-      aitt.close();
    }
 
    @Test
    public void testUnsubscribe() {
-      Aitt aitt = null;
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testUnsubscribe", e);
-      }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
 
-      aitt.subscribe(topic, new Aitt.SubscribeCallback() {
-         @Override
-         public void onMessageReceived(AittMessage message) {}
-      });
-      aitt.unsubscribe(topic);
-      aitt.close();
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+            @Override
+            public void onMessageReceived(AittMessage message) {
+            }
+         });
+
+         aitt.unsubscribe(topic);
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testUnsubscribe " + e);
+      }
    }
 
-   @Test(expected = IllegalArgumentException.class)
-   public void testUnsubscribeInvalidTopic() {
-      Aitt aitt = null;
+   @Test
+   public void testUnsubscribeInvalidTopic() throws IllegalArgumentException {
       try {
-         aitt = new Aitt(appContext, id);
-      } catch (InstantiationException e) {
-         Log.e(TAG, "Error during testUnsubscribe", e);
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         String _topic = "";
+         aitt.unsubscribe(_topic);
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testUnsubscribeInvalidTopic " + e);
       }
-      assertNotNull(aitt);
-      aitt.connect(brokerIp, port);
-      String _topic = "";
-      aitt.unsubscribe(_topic);
-      aitt.close();
    }
 }
