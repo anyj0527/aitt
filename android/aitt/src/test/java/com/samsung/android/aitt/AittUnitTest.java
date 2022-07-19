@@ -61,7 +61,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testInitialize() {
+   public void testInitialize_P01() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -74,7 +74,7 @@ public class AittUnitTest {
    }
 
    @Test(expected = IllegalArgumentException.class)
-   public void testInitializeInvalidId() {
+   public void testInitializeInvalidId_N01() {
       String _id = "";
       try {
          Aitt aitt = new Aitt(appContext, _id);
@@ -85,7 +85,7 @@ public class AittUnitTest {
    }
 
    @Test(expected = IllegalArgumentException.class)
-   public void testInitializeInvalidContext() {
+   public void testInitializeInvalidContext_N02() {
       String _id = "";
       try {
          Aitt aitt = new Aitt(null, _id);
@@ -96,7 +96,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testConnect() {
+   public void testConnect_P02() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -111,7 +111,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testConnectWithoutIP() {
+   public void testConnectWithoutIP_P03() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -126,7 +126,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testDisconnect() {
+   public void testDisconnect_P04() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -141,7 +141,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishMqtt() {
+   public void testPublishMqtt_P05() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -159,7 +159,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishWebRTC() {
+   public void testPublishWebRTC_P06() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -177,7 +177,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishInvalidTopic() throws IllegalArgumentException {
+   public void testPublishInvalidTopic_N03() throws IllegalArgumentException {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -195,7 +195,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishAnyProtocol() {
+   public void testPublishAnyProtocol_P07() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -213,7 +213,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishProtocolSet() {
+   public void testPublishProtocolSet_P08() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -232,7 +232,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeMqtt() {
+   public void testSubscribeMqtt_P09() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -255,7 +255,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeWebRTC() {
+   public void testSubscribeWebRTC_P10() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -279,7 +279,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeInvalidTopic() throws IllegalArgumentException {
+   public void testSubscribeInvalidTopic_N04() throws IllegalArgumentException {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -301,7 +301,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeInvalidCallback() throws IllegalArgumentException {
+   public void testSubscribeInvalidCallback_N05() throws IllegalArgumentException {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -319,7 +319,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeAnyProtocol() {
+   public void testSubscribeAnyProtocol_P11() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -343,7 +343,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeProtocolSet() {
+   public void testSubscribeProtocolSet_P12() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -368,7 +368,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testUnsubscribe() {
+   public void testUnsubscribe_P13() {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
@@ -390,7 +390,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testUnsubscribeInvalidTopic() throws IllegalArgumentException {
+   public void testUnsubscribeInvalidTopic_N06() throws IllegalArgumentException {
       try {
          Aitt aitt = PowerMockito.mock(Aitt.class);
          initialize(aitt);
