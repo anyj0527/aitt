@@ -26,15 +26,15 @@ android {
                 arguments '-DANDROID_STL=c++_shared'
                 arguments "-DANDROID_NDK_HOME=${System.env.ANDROID_NDK_ROOT}"
                 arguments "-DGSTREAMER_ROOT_ANDROID=${System.env.GSTREAMER_ROOT_ANDROID}"
+                arguments '-DLIB_INSTALL_DIR=/usr/lib'
                 arguments '-DBUILD_TESTING=OFF'
                 arguments '-DUSE_PREBUILT=OFF'
                 arguments '-DVERSIONING=OFF'
                 arguments '-DPLATFORM=android'
                 arguments '-DCOVERAGE=OFF'
-                arguments '-DWITH_TCP=OFF'
                 abiFilters 'arm64-v8a', 'x86'
                 cppFlags "-std=c++17"
-                targets "aitt-android"
+                targets "aitt-android", "aitt-transport-tcp"
             }
         }
     }

@@ -13,7 +13,6 @@ INCLUDE(GNUInstallDirs)
 INCLUDE(FindPkgConfig)
 
 IF(PLATFORM STREQUAL "android")
-	SET(LIB_INSTALL_DIR ${CMAKE_CURRENT_BINARY_DIR}/${LIB_INSTALL_DIR})
 	SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -fdiagnostics-color")
 	ADD_DEFINITIONS(-DANDROID)
 	INCLUDE(${PROJECT_ROOT_DIR}/cmake/aitt_android_flatbuffers.cmake)

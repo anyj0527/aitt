@@ -237,29 +237,28 @@ public class Aitt {
         if (protocols.isEmpty()) {
             throw new IllegalArgumentException("Invalid protocols");
         }
-        try {
-            synchronized (this) {
-                if (!publishTable.containsKey(topic)) {
-                    Log.e(TAG, "Invalid publish request over unsubscribed topic");
-                    return;
-                }
-                HostTable hostTable = publishTable.get(topic);
-                for (String hostIp : hostTable.hostMap.keySet()) {
-                    PortTable portTable = hostTable.hostMap.get(hostIp);
-                    for (Integer port : portTable.portMap.keySet()) {
-                        Protocol protocol = portTable.portMap.get(port).first;
-                        Object transportHandler = portTable.portMap.get(port).second;
-                        if (protocol == Protocol.WEBRTC) {
+        if (protocols.contains(Protocol.WEBRTC)) {
+            try {
+                synchronized (this) {
+                    if (!publishTable.containsKey(topic)) {
+                        Log.e(TAG, "Invalid publish request over unsubscribed topic");
+                        return;
+                    }
+                    HostTable hostTable = publishTable.get(topic);
+                    for (String hostIp : hostTable.hostMap.keySet()) {
+                        PortTable portTable = hostTable.hostMap.get(hostIp);
+                        for (Integer port : portTable.portMap.keySet()) {
+                            Object transportHandler = portTable.portMap.get(port).second;
                             publishWebRTC(portTable, topic, transportHandler, hostIp, port, message);
-                        } else {
-                            int proto = protocolsToInt(protocols);
-                            publishJNI(instance, topic, message, message.length, proto, qos.ordinal(), retain);
                         }
                     }
                 }
+            } catch (Exception e) {
+                Log.e(TAG, "Error during publish", e);
             }
-        } catch (Exception e) {
-            Log.e(TAG, "Error during publish", e);
+        } else {
+            int proto = protocolsToInt(protocols);
+            publishJNI(instance, topic, message, message.length, proto, qos.ordinal(), retain);
         }
     }
 
