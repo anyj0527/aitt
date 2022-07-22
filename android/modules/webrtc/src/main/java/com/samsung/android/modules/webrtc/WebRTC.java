@@ -56,7 +56,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
-
+/**
+ * WebRTC class to implement webRTC functionalities
+ */
 public class WebRTC {
     private static final String TAG = "WebRTC";
     public static final String VIDEO_TRACK_ID = "ARDAMSv0";
@@ -79,16 +81,30 @@ public class WebRTC {
     private String recieverIP;
     private Integer recieverPort;
 
+    /**
+     * WebRTC channels supported - Media channel, data channel
+     */
     public enum DataType{
         MESSAGE,
         VIDEOFRAME,
     }
 
+    /**
+     * WebRTC constructor to create webRTC instance
+     * @param dataType To decide webRTC channel type
+     * @param appContext Application context creating webRTC instance
+     */
     public WebRTC(DataType dataType , Context appContext) {
         this.appContext = appContext;
         this.isReciever = false;
     }
 
+    /**
+     * WebRTC constructor to create webRTC instance
+     * @param dataType To decide webRTC channel type
+     * @param appContext Application context creating webRTC instance
+     * @param socket Java server socket for webrtc signalling
+     */
     WebRTC(DataType dataType , Context appContext , Socket socket) {
         Log.d(TAG , "InWebRTC Constructor");
         this.appContext = appContext;
@@ -96,10 +112,17 @@ public class WebRTC {
         this.isReciever = true;
     }
 
+    /**
+     * To create data call-back mechanism
+     * @param cb aitt callback registered to receive a webrtc data
+     */
     public void registerDataCallback(ReceiveDataCallback cb){
         this.dataCallback = cb;
     }
 
+    /**
+     * Method to disconnect the connection from peer
+     */
     public void disconnect() {
         if (sdpThread != null) {
             sdpThread.stop();
@@ -123,16 +146,27 @@ public class WebRTC {
         }
     }
 
+    /**
+     * Method to establish a socket connection with peer node
+     */
     public void connect() {
         initialize();
     }
 
+    /**
+     * Method to establish communication with peer node
+     * @param recieverIP IP Address of the destination(peer) node
+     * @param recieverPort Port number of the destination(peer) node
+     */
     public void connect(String recieverIP , Integer recieverPort){
         this.recieverIP = recieverIP;
         this.recieverPort = recieverPort;
         initialize();
     }
 
+    /**
+     * Method to initialize webRTC APIs while establishing connection
+     */
     private void initialize(){
         initializePeerConnectionFactory();
         initializePeerConnections();
@@ -146,6 +180,9 @@ public class WebRTC {
         new Thread(sdpThread).start();
     }
 
+    /**
+     * Method to create webRTC offer for sdp negotiation
+     */
     private void doCall() {
         MediaConstraints sdpMediaConstraints = new MediaConstraints();
         sdpMediaConstraints.mandatory.add(new MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"));
@@ -167,6 +204,12 @@ public class WebRTC {
         }, sdpMediaConstraints);
     }
 
+    /**
+     * Method to send signalling messages over socket connection
+     * @param isJSON Boolean to check if message is JSON
+     * @param message Data to be sent over webRTC connection
+     * @throws IOException Throws IOException if writing to outStream fails
+     */
     private void sendMessage(boolean isJSON , Object message) throws IOException {
         Log.d(TAG , message.toString());
         if(isJSON){
@@ -177,20 +220,36 @@ public class WebRTC {
         }
     }
 
+    /**
+     * Class to create proxy video sink
+     */
     private class ProxyVideoSink implements VideoSink {
 
         private ReceiveDataCallback dataCallback;
 
+        /**
+         * ProxyVideoSink constructor to create its instance
+         * @param dataCb DataCall back to be set to self-object
+         */
         ProxyVideoSink(ReceiveDataCallback dataCb){
             this.dataCallback = dataCb;
         }
 
+        /**
+         * Method to send data through data call back
+         * @param frame VideoFrame to be transferred using media channel
+         */
         @Override
         synchronized public void onFrame(VideoFrame frame) {
             byte[] rawFrame = createNV21Data(frame.getBuffer().toI420());
             dataCallback.pushData(rawFrame);
         }
 
+        /**
+         * Method used to convert VideoFrame to NV21 data format
+         * @param i420Buffer VideoFrame in I420 buffer format
+         * @return the video frame in NV21 data format
+         */
         public byte[] createNV21Data(VideoFrame.I420Buffer i420Buffer) {
             final int width = i420Buffer.getWidth();
             final int height = i420Buffer.getHeight();
@@ -218,7 +277,9 @@ public class WebRTC {
         }
     }
 
-
+    /**
+     * Method to initialize peer connection factory
+     */
     private void initializePeerConnectionFactory() {
         EglBase mRootEglBase;
         mRootEglBase = EglBase.create();
@@ -231,6 +292,9 @@ public class WebRTC {
         factory = builder.createPeerConnectionFactory();
     }
 
+    /**
+     * Method to create video track
+     */
     private void createVideoTrack(){
         videoCapturer = new FrameVideoCapturer();
         VideoSource videoSource = factory.createVideoSource(false);
@@ -239,17 +303,28 @@ public class WebRTC {
         videoTrackFromSource.setEnabled(true);
     }
 
+    /**
+     * Method to initialize peer connections
+     */
     private void initializePeerConnections() {
         peerConnection = createPeerConnection(factory);
         localDataChannel = peerConnection.createDataChannel("sendDataChannel", new DataChannel.Init());
     }
 
+    /**
+     * Method to add video track
+     */
     private void addVideoTrack() {
         MediaStream mediaStream = factory.createLocalMediaStream("ARDAMS");
         mediaStream.addTrack(videoTrackFromSource);
         peerConnection.addStream(mediaStream);
     }
 
+    /**
+     * Method to create peer connection
+     * @param factory Peer connection factory object
+     * @return return factory object
+     */
     private PeerConnection createPeerConnection(PeerConnectionFactory factory) {
         PeerConnection.RTCConfiguration rtcConfig = new PeerConnection.RTCConfiguration(new ArrayList<>());
         MediaConstraints pcConstraints = new MediaConstraints();
@@ -351,19 +426,35 @@ public class WebRTC {
         return factory.createPeerConnection(rtcConfig, pcConstraints, pcObserver);
     }
 
+    /**
+     * Method used to send video data
+     * @param frame Video frame in byte format
+     * @param width width of the video frame
+     * @param height height of the video frame
+     */
     public void sendVideoData(byte[] frame , int width , int height){
         videoCapturer.send(frame , width , height);
     }
 
+    /**
+     * Method to send message data
+     * @param message message to be sent in byte format
+     */
     public void sendMessageData(byte[] message) {
         ByteBuffer data = ByteBuffer.wrap(message);
         localDataChannel.send(new DataChannel.Buffer(data, false));
     }
 
+    /**
+     * Interface to create data call back mechanism
+     */
     public interface ReceiveDataCallback{
         void pushData(byte[] frame);
     }
 
+    /**
+     * Class packet to create a packet
+     */
     private static class Packet implements Serializable {
         boolean isString;
         String obj;
@@ -378,6 +469,11 @@ public class WebRTC {
         }
     }
 
+    /**
+     * Method to read incoming message and convert it to byte format
+     * @param buffer Message incoming in Byte buffer format
+     * @return returns byteBuffer message in byte format
+     */
     private byte[] readIncomingMessage(ByteBuffer buffer) {
         byte[] bytes;
         if (buffer.hasArray()) {
@@ -389,6 +485,9 @@ public class WebRTC {
         return bytes;
     }
 
+    /**
+     * Class to implement SDP observer
+     */
     private static class SimpleSdpObserver implements SdpObserver {
         @Override
         public void onCreateSuccess(SessionDescription sessionDescription) {
@@ -411,6 +510,9 @@ public class WebRTC {
         }
     }
 
+    /**
+     * Class to implement Frame video capturer
+     */
     private static class FrameVideoCapturer implements VideoCapturer {
         private CapturerObserver capturerObserver;
 
@@ -448,6 +550,9 @@ public class WebRTC {
         }
     }
 
+    /**
+     * Class to implement SDP thread
+     */
     private class SDPThread implements Runnable {
         private volatile boolean isRunning = true;
 
@@ -478,6 +583,10 @@ public class WebRTC {
             }
         }
 
+        /**
+         * Method to decode message
+         * @param message Message received in JSON object format
+         */
         private void decodeMessage(JSONObject message) {
             try {
                 if (message.getString("type").equals("offer")) {
@@ -497,6 +606,9 @@ public class WebRTC {
             }
         }
 
+        /**
+         * Method to create SDP answer for a given SDP offer
+         */
         private void doAnswer() {
             peerConnection.createAnswer(new SimpleSdpObserver() {
                 @Override
@@ -514,6 +626,9 @@ public class WebRTC {
             }, new MediaConstraints());
         }
 
+        /**
+         * Method used to create a socket for SDP negotiation
+         */
         private void createSocket(){
             try {
                 if(!isReciever){
@@ -526,6 +641,9 @@ public class WebRTC {
             }
         }
 
+        /**
+         * Method to invoke Signalling handshake message
+         */
         private void invokeSendMessage(){
             try {
                 sendMessage(false , "got user media");
@@ -534,18 +652,27 @@ public class WebRTC {
             }
         }
 
+        /**
+         * Method to check if the message in received packet is "got user media"
+         */
         private void checkPacketMessage(String message){
             if (message.equals("got user media")) {
                 maybeStart();
             }
         }
 
+        /**
+         * Method to invoke MaybeStart()
+         */
         private void invokeMaybeStart(){
             if (!isInitiator && !isStarted) {
                 maybeStart();
             }
         }
 
+        /**
+         * Method to begin SDP negotiation by sending SDP offer to peer
+         */
         private void maybeStart() {
             Log.d(TAG, "maybeStart: " + isStarted + " " + isChannelReady);
             if (!isStarted && isChannelReady) {
@@ -556,6 +683,9 @@ public class WebRTC {
             }
         }
 
+        /**
+         * Method to stop thread
+         */
         public void stop() {
             isRunning = false;
         }

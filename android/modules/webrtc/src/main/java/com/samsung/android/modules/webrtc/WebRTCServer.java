@@ -24,6 +24,9 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Class to implement WebRTC server related functionalities
+ */
 public class WebRTCServer {
     private static final String TAG = "WebRTCServer";
     private WebRTC.DataType dataType;
@@ -34,13 +37,22 @@ public class WebRTCServer {
     private ServerThread serverThread = null;
     private Thread thread = null;
 
+    /**
+     * WebRTCServer constructor to create its instance
+     * @param appContext Application context of the app creating WebRTCServer instance
+     * @param dataType Datatype to create webRTC channel - Media channel or data channel
+     * @param dataCallback Data callback object to create call back mechanism
+     */
     public WebRTCServer(Context appContext, WebRTC.DataType dataType, WebRTC.ReceiveDataCallback dataCallback){
         this.appContext = appContext;
         this.dataType = dataType;
         this.dataCallback = dataCallback;
     }
 
-    // Returns Port Number on success and -1 on Failure
+    /**
+     * Method to start WebRTCServer instance
+     * @return Returns Port number on success and -1 on failure
+     */
     public int start(){
         try {
             serverSocket = new ServerSocket(0);
@@ -54,6 +66,9 @@ public class WebRTCServer {
         return serverSocket.getLocalPort();
     }
 
+    /**
+     * Method to stop running WebRTC server instance
+     */
     public void stop(){
         if (serverThread != null) {
             serverThread.stop();
@@ -70,6 +85,9 @@ public class WebRTCServer {
         }
     }
 
+    /**
+     * Class to implement a server thread
+     */
     private class ServerThread implements Runnable{
         private volatile boolean isRunning = true;
 
