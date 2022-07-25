@@ -33,7 +33,11 @@ const std::string MQ::REPLY_SEQUENCE_NUM_KEY = "sequenceNum";
 const std::string MQ::REPLY_IS_END_SEQUENCE_KEY = "isEndSequence";
 
 MQ::MQ(const std::string &id, bool clear_session)
-      : handle(nullptr), keep_alive(60), subscriber_iterator_updated(false), connect_cb(nullptr)
+      : handle(nullptr),
+        keep_alive(60),
+        subscribers_iterating(false),
+        subscriber_iterator_updated(false),
+        connect_cb(nullptr)
 {
     do {
         int ret = mosquitto_lib_init();
@@ -73,6 +77,15 @@ MQ::MQ(const std::string &id, bool clear_session)
 MQ::~MQ(void)
 {
     INFO("Destructor");
+
+    if (mq_connect_thread.joinable())
+        mq_connect_thread.join();
+
+    callback_lock.lock();
+    connect_cb = nullptr;
+    subscribers.clear();
+    callback_lock.unlock();
+
     int ret;
     ret = mosquitto_loop_stop(handle, true);
     if (ret != MOSQ_ERR_SUCCESS)
@@ -87,9 +100,14 @@ MQ::~MQ(void)
 
 void MQ::SetConnectionCallback(MQConnectionCallback cb)
 {
+    std::lock_guard<std::recursive_mutex> lock_from_here(callback_lock);
     connect_cb = cb;
 
-    std::thread([&]() {
+    if (mq_connect_thread.joinable())
+        mq_connect_thread.join();
+
+    // When it's called in the cb, it's blocked.
+    mq_connect_thread = std::thread([&]() {
         if (cb) {
             mosquitto_connect_v5_callback_set(handle, ConnectCallback);
             mosquitto_disconnect_v5_callback_set(handle, DisconnectCallback);
@@ -97,7 +115,7 @@ void MQ::SetConnectionCallback(MQConnectionCallback cb)
             mosquitto_connect_v5_callback_set(handle, nullptr);
             mosquitto_disconnect_v5_callback_set(handle, nullptr);
         }
-    }).detach();
+    });
 }
 
 void MQ::ConnectCallback(struct mosquitto *mosq, void *obj, int rc, int flag,
@@ -108,6 +126,7 @@ void MQ::ConnectCallback(struct mosquitto *mosq, void *obj, int rc, int flag,
 
     INFO("Connected : rc(%d), flag(%d)", rc, flag);
 
+    std::lock_guard<std::recursive_mutex> lock_from_here(mq->callback_lock);
     if (mq->connect_cb)
         mq->connect_cb(AITT_CONNECTED);
 }
@@ -120,6 +139,7 @@ void MQ::DisconnectCallback(struct mosquitto *mosq, void *obj, int rc,
 
     INFO("Disconnected : rc(%d)", rc);
 
+    std::lock_guard<std::recursive_mutex> lock_from_here(mq->callback_lock);
     if (mq->connect_cb)
         mq->connect_cb(AITT_DISCONNECTED);
 }
@@ -170,11 +190,15 @@ void MQ::MessageCallback(mosquitto *handle, void *obj, const mosquitto_message *
     RET_IF(obj == nullptr);
     MQ *mq = static_cast<MQ *>(obj);
 
-    std::lock_guard<std::recursive_mutex> auto_lock(mq->subscribers_lock);
-
+    std::lock_guard<std::recursive_mutex> auto_lock(mq->callback_lock);
+    mq->subscribers_iterating = true;
     mq->subscriber_iterator = mq->subscribers.begin();
     while (mq->subscriber_iterator != mq->subscribers.end()) {
-        bool result = CompareTopic((*mq->subscriber_iterator)->topic.c_str(), msg->topic);
+        auto subscribe_data = *(mq->subscriber_iterator);
+        if (nullptr == subscribe_data)
+            ERR("end() is not valid because elements were added.");
+
+        bool result = CompareTopic(subscribe_data->topic.c_str(), msg->topic);
         if (result)
             mq->InvokeCallback(msg, props);
 
@@ -183,6 +207,10 @@ void MQ::MessageCallback(mosquitto *handle, void *obj, const mosquitto_message *
         else
             mq->subscriber_iterator_updated = false;
     }
+    mq->subscribers_iterating = false;
+    mq->subscribers.insert(mq->subscribers.end(), mq->new_subscribers.begin(),
+          mq->new_subscribers.end());
+    mq->new_subscribers.clear();
 }
 
 void MQ::InvokeCallback(const mosquitto_message *msg, const mosquitto_property *props)
@@ -232,7 +260,8 @@ void MQ::InvokeCallback(const mosquitto_message *msg, const mosquitto_property *
     }
 
     (*subscriber_iterator)
-          ->cb(&mq_msg, msg->topic, msg->payload, msg->payloadlen, (*subscriber_iterator)->cbdata);
+          ->cb(&mq_msg, msg->topic, msg->payload, msg->payloadlen,
+                (*subscriber_iterator)->user_data);
 }
 
 void MQ::Publish(const std::string &topic, const void *data, const size_t datalen, int qos,
@@ -310,7 +339,7 @@ void MQ::SendReply(MSG *msg, const void *data, const size_t datalen, int qos, bo
     }
 }
 
-void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata, int qos)
+void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void *user_data, int qos)
 {
     int mid = -1;
     int ret = mosquitto_subscribe(handle, &mid, topic.c_str(), qos);
@@ -319,8 +348,11 @@ void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void 
         throw std::runtime_error(mosquitto_strerror(ret));
     }
 
-    std::lock_guard<std::recursive_mutex> lock_from_here(subscribers_lock);
-    SubscribeData *data = new SubscribeData(topic, cb, cbdata);
+    std::lock_guard<std::recursive_mutex> lock_from_here(callback_lock);
+    SubscribeData *data = new SubscribeData(topic, cb, user_data);
+    if (subscribers_iterating)
+        new_subscribers.push_back(data);
+    else
     subscribers.push_back(data);
 
     return static_cast<void *>(data);
@@ -328,7 +360,7 @@ void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void 
 
 void *MQ::Unsubscribe(void *sub_handle)
 {
-    std::lock_guard<std::recursive_mutex> auto_lock(subscribers_lock);
+    std::lock_guard<std::recursive_mutex> auto_lock(callback_lock);
     auto it = std::find(subscribers.begin(), subscribers.end(),
           static_cast<SubscribeData *>(sub_handle));
 
@@ -346,7 +378,7 @@ void *MQ::Unsubscribe(void *sub_handle)
         subscribers.erase(it);
     }
 
-    void *cbdata = data->cbdata;
+    void *user_data = data->user_data;
     std::string topic = data->topic;
     delete data;
 
@@ -357,7 +389,7 @@ void *MQ::Unsubscribe(void *sub_handle)
         throw std::runtime_error(mosquitto_strerror(ret));
     }
 
-    return cbdata;
+    return user_data;
 }
 
 bool MQ::CompareTopic(const std::string &left, const std::string &right)
@@ -372,9 +404,9 @@ bool MQ::CompareTopic(const std::string &left, const std::string &right)
     return result;
 }
 
-inline MQ::SubscribeData::SubscribeData(const std::string topic, const SubscribeCallback &cb,
-      void *cbdata)
-      : topic(topic), cb(cb), cbdata(cbdata)
+MQ::SubscribeData::SubscribeData(const std::string &in_topic, const SubscribeCallback &in_cb,
+      void *in_user_data)
+      : topic(in_topic), cb(in_cb), user_data(in_user_data)
 {
 }
 

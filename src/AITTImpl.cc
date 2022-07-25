@@ -184,7 +184,7 @@ void AITT::Impl::PublishWebRtc(const std::string &topic, const void *data, const
 }
 
 AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::SubscribeCallback &cb,
-      void *cbdata, AittProtocol protocol, AittQoS qos)
+      void *user_data, AittProtocol protocol, AittQoS qos)
 {
     SubscribeInfo *info = new SubscribeInfo();
     info->first = protocol;
@@ -192,14 +192,14 @@ AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::Subs
     void *subscribe_handle;
     switch (protocol) {
     case AITT_TYPE_MQTT:
-        subscribe_handle = MQSubscribe(info, &main_loop, topic, cb, cbdata, qos);
+        subscribe_handle = SubscribeMQ(info, &main_loop, topic, cb, user_data, qos);
         break;
     case AITT_TYPE_TCP:
-        subscribe_handle = SubscribeTCP(info, topic, cb, cbdata, qos);
+        subscribe_handle = SubscribeTCP(info, topic, cb, user_data, qos);
         PublishSubscribeTable();
         break;
     case AITT_TYPE_WEBRTC:
-        subscribe_handle = SubscribeWebRtc(info, topic, cb, cbdata, qos);
+        subscribe_handle = SubscribeWebRtc(info, topic, cb, user_data, qos);
         break;
     default:
         ERR("Unknown AittProtocol(%d)", protocol);
@@ -216,32 +216,33 @@ AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::Subs
     return reinterpret_cast<AittSubscribeID>(info);
 }
 
-AittSubscribeID AITT::Impl::MQSubscribe(SubscribeInfo *handle, MainLoopHandler *loop_handle,
-      const std::string &topic, const SubscribeCallback &cb, void *cbdata, AittQoS qos)
+AittSubscribeID AITT::Impl::SubscribeMQ(SubscribeInfo *handle, MainLoopHandler *loop_handle,
+      const std::string &topic, const SubscribeCallback &cb, void *user_data, AittQoS qos)
 {
     return mq.Subscribe(
           topic,
           [this, handle, loop_handle, cb](MSG *msg, const std::string &topic, const void *data,
-                const size_t datalen, void *cbdata) {
+                const size_t datalen, void *mq_user_data) {
               void *delivery = malloc(datalen);
               if (delivery)
                   memcpy(delivery, data, datalen);
 
               msg->SetID(handle);
-              auto idler_cb = std::bind(&Impl::DetachedCB, this, cb, *msg, delivery, datalen,
-                    cbdata, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+              auto idler_cb =
+                    std::bind(&Impl::DetachedCB, this, cb, *msg, delivery, datalen, mq_user_data,
+                          std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
               MainLoopHandler::AddIdle(loop_handle, idler_cb, nullptr);
           },
-          cbdata, qos);
+          user_data, qos);
 }
 
 void AITT::Impl::DetachedCB(SubscribeCallback cb, MSG msg, void *data, const size_t datalen,
-      void *cbdata, MainLoopHandler::MainLoopResult result, int fd,
+      void *user_data, MainLoopHandler::MainLoopResult result, int fd,
       MainLoopHandler::MainLoopData *loop_data)
 {
     RET_IF(cb == nullptr);
 
-    cb(&msg, data, datalen, cbdata);
+    cb(&msg, data, datalen, user_data);
 
     free(data);
 }
@@ -259,20 +260,20 @@ void *AITT::Impl::Unsubscribe(AittSubscribeID subscribe_id)
         throw std::runtime_error("subscribe_id");
     }
 
-    void *cbdata = nullptr;
+    void *user_data = nullptr;
     SubscribeInfo *found_info = *it;
     switch (found_info->first) {
     case AITT_TYPE_MQTT:
-        cbdata = mq.Unsubscribe(found_info->second);
+        user_data = mq.Unsubscribe(found_info->second);
         break;
     case AITT_TYPE_TCP: {
         auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
-        cbdata = tcpModule->Unsubscribe(found_info->second);
+        user_data = tcpModule->Unsubscribe(found_info->second);
         break;
     }
     case AITT_TYPE_WEBRTC: {
         auto webrtcModule = modules.GetInstance(AITT_TYPE_WEBRTC);
-        cbdata = webrtcModule->Unsubscribe(found_info->second);
+        user_data = webrtcModule->Unsubscribe(found_info->second);
         break;
     }
     default:
@@ -284,13 +285,13 @@ void *AITT::Impl::Unsubscribe(AittSubscribeID subscribe_id)
     delete info;
 
     PublishSubscribeTable();
-    return cbdata;
+    return user_data;
 }
 
 void AITT::Impl::DiscoveryMessageCallback(MSG *mq, const std::string &topic, const void *msg,
-      const int szmsg, void *cbdata)
+      const int szmsg, void *user_data)
 {
-    AITT::Impl *impl = static_cast<AITT::Impl *>(cbdata);
+    AITT::Impl *impl = static_cast<AITT::Impl *>(user_data);
 
     size_t end = topic.find("/", DISCOVERY_TOPIC_BASE.length());
 
@@ -341,7 +342,7 @@ void AITT::Impl::DiscoveryMessageCallback(MSG *mq, const std::string &topic, con
 }
 
 int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
-      AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *cbdata,
+      AittProtocol protocol, AittQoS qos, bool retain, const SubscribeCallback &cb, void *user_data,
       const std::string &correlation)
 {
     std::string replyTopic = topic + RESPONSE_POSTFIX + std::to_string(reply_id++);
@@ -362,7 +363,7 @@ int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, con
               }
               cb(sub_msg, sub_data, sub_datalen, sub_cbdata);
           },
-          cbdata, protocol, qos);
+          user_data, protocol, qos);
 
     mq.PublishWithReply(topic, data, datalen, qos, false, replyTopic, correlation);
     return 0;
@@ -370,7 +371,7 @@ int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, con
 
 int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
       const size_t datalen, AittProtocol protocol, AittQoS qos, bool retain,
-      const SubscribeCallback &cb, void *cbdata, const std::string &correlation, int timeout_ms)
+      const SubscribeCallback &cb, void *user_data, const std::string &correlation, int timeout_ms)
 {
     std::string replyTopic = topic + RESPONSE_POSTFIX + std::to_string(reply_id++);
 
@@ -385,7 +386,7 @@ int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
     unsigned int timeout_id = 0;
     bool is_timeout = false;
 
-    subscribe_handle = MQSubscribe(
+    subscribe_handle = SubscribeMQ(
           info, &sync_loop, replyTopic,
           [&](MSG *sub_msg, const void *sub_data, const size_t sub_datalen, void *sub_cbdata) {
               if (sub_msg->IsEndSequence()) {
@@ -403,7 +404,7 @@ int AITT::Impl::PublishWithReplySync(const std::string &topic, const void *data,
               }
               cb(sub_msg, sub_data, sub_datalen, sub_cbdata);
           },
-          cbdata, qos);
+          user_data, qos);
     info->second = subscribe_handle;
     {
         std::unique_lock<std::mutex> lock(subscribed_list_mutex_);
@@ -483,26 +484,26 @@ void AITT::Impl::PublishSubscribeTable(void)
 }
 
 void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,
-      const SubscribeCallback &cb, void *cbdata, AittQoS qos)
+      const SubscribeCallback &cb, void *user_data, AittQoS qos)
 {
     auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
     return tcpModule->Subscribe(
           topic,
           [handle, cb](const std::string &topic, const void *data, const size_t datalen,
-                void *cbdata, const std::string &correlation) -> void {
+                void *user_data, const std::string &correlation) -> void {
               MSG msg;
               msg.SetID(handle);
               msg.SetTopic(topic);
               msg.SetCorrelation(correlation);
               msg.SetProtocols(AITT_TYPE_TCP);
 
-              return cb(&msg, data, datalen, cbdata);
+              return cb(&msg, data, datalen, user_data);
           },
-          cbdata, qos);
+          user_data, qos);
 }
 
 void *AITT::Impl::SubscribeWebRtc(SubscribeInfo *handle, const std::string &topic,
-      const SubscribeCallback &cb, void *cbdata, AittQoS qos)
+      const SubscribeCallback &cb, void *user_data, AittQoS qos)
 {
     auto webrtc_module = modules.GetInstance(AITT_TYPE_WEBRTC);
     flexbuffers::Builder fbb;
@@ -518,15 +519,15 @@ void *AITT::Impl::SubscribeWebRtc(SubscribeInfo *handle, const std::string &topi
     return webrtc_module->Subscribe(
           topic,
           [handle, cb](const std::string &topic, const void *data, const size_t datalen,
-                void *cbdata, const std::string &correlation) -> void {
+                void *user_data, const std::string &correlation) -> void {
               MSG msg;
               msg.SetID(handle);
               msg.SetTopic(topic);
               msg.SetCorrelation(correlation);
               msg.SetProtocols(AITT_TYPE_WEBRTC);
 
-              return cb(&msg, data, datalen, cbdata);
+              return cb(&msg, data, datalen, user_data);
           },
-          buf.data(), buf.size(), cbdata, qos);
+          buf.data(), buf.size(), user_data, qos);
 }
 }  // namespace aitt

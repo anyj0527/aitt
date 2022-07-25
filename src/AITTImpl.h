@@ -73,7 +73,7 @@ class AITT::Impl {
           const int szmsg, void *cbdata);
 
     void ConnectionCB(ConnectionCallback cb, void *user_data, int status);
-    AittSubscribeID MQSubscribe(SubscribeInfo *info, MainLoopHandler *loop_handle,
+    AittSubscribeID SubscribeMQ(SubscribeInfo *info, MainLoopHandler *loop_handle,
           const std::string &topic, const SubscribeCallback &cb, void *cbdata, AittQoS qos);
     void DetachedCB(SubscribeCallback cb, MSG mq_msg, void *data, const size_t datalen,
           void *cbdata, MainLoopHandler::MainLoopResult result, int fd,

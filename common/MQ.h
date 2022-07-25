@@ -21,6 +21,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -33,8 +34,8 @@ namespace aitt {
 
 class MQ {
   public:
-    using SubscribeCallback =
-          std::function<void(MSG *, const std::string &topic, const void *, const int, void *)>;
+    using SubscribeCallback = std::function<void(MSG *msg, const std::string &topic,
+          const void *data, const size_t datalen, void *user_data)>;
     using MQConnectionCallback = std::function<void(int)>;
 
     explicit MQ(const std::string &id, bool clear_session = false);
@@ -52,17 +53,16 @@ class MQ {
     void PublishWithReply(const std::string &topic, const void *data, const size_t datalen, int qos,
           bool retain, const std::string &reply_topic, const std::string &correlation);
     void SendReply(MSG *msg, const void *data, const size_t datalen, int qos, bool retain);
-    void *Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata = nullptr,
-          int qos = 0);
+    void *Subscribe(const std::string &topic, const SubscribeCallback &cb,
+          void *user_data = nullptr, int qos = 0);
     void *Unsubscribe(void *handle);
 
   private:
     struct SubscribeData {
-        SubscribeData(const std::string topic, const SubscribeCallback &cb, void *cbdata);
-        virtual ~SubscribeData(void) = default;
+        SubscribeData(const std::string &topic, const SubscribeCallback &cb, void *user_data);
         std::string topic;
         SubscribeCallback cb;
-        void *cbdata;
+        void *user_data;
     };
 
     static void ConnectCallback(mosquitto *mosq, void *obj, int rc, int flag,
@@ -79,10 +79,13 @@ class MQ {
     mosquitto *handle;
     const int keep_alive;
     std::vector<SubscribeData *> subscribers;
+    bool subscribers_iterating;
+    std::vector<SubscribeData *> new_subscribers;
     std::vector<SubscribeData *>::iterator subscriber_iterator;
     bool subscriber_iterator_updated;
-    std::recursive_mutex subscribers_lock;
+    std::recursive_mutex callback_lock;
     MQConnectionCallback connect_cb;
+    std::thread mq_connect_thread;
 };
 
 }  // namespace aitt

@@ -32,8 +32,9 @@ class API AITT {
     static constexpr const char *WILL_LEAVE_NETWORK = "disconnected";
     static constexpr const char *JOIN_NETWORK = "connected";
 
-    using SubscribeCallback = std::function<void(MSG *, const void *, const size_t, void *)>;
-    using ConnectionCallback = std::function<void(AITT &, int, void *)>;
+    using SubscribeCallback =
+          std::function<void(MSG *msg, const void *data, const size_t datalen, void *user_data)>;
+    using ConnectionCallback = std::function<void(AITT &, int, void *user_data)>;
 
     explicit AITT(const std::string &id, const std::string &ip_addr, bool clear_session = false);
     virtual ~AITT(void);
