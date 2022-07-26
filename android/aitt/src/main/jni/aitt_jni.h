@@ -30,6 +30,7 @@ class AittNativeInterface {
         struct CallbackContext {
             JavaVM *jvm;
             jmethodID messageCallbackMethodID;
+            jmethodID connectionCallbackMethodID;
         };
 
     private:
@@ -50,6 +51,7 @@ class AittNativeInterface {
         static void Java_com_samsung_android_aitt_Aitt_unsubscribeJNI(JNIEnv *env, jobject jniInterfaceObject, jlong handle,
                                                                       jlong aittSubId);
         static void Java_com_samsung_android_aitt_Aitt_disconnectJNI(JNIEnv *env, jobject jniInterfaceObject, jlong handle);
+        static void Java_com_samsung_android_aitt_Aitt_setConnectionCallbackJNI(JNIEnv *env, jobject jniInterfaceObject, jlong handle);
 
     private:
         AITT aitt;

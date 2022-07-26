@@ -52,6 +52,7 @@ public class AittUnitTest {
          PowerMockito.when(aitt, "initJNI", anyString(), anyString(), anyBoolean()).thenReturn(1L);
          PowerMockito.doNothing().when(aitt, "connectJNI", anyLong(), anyString(), anyInt());
          PowerMockito.doNothing().when(aitt, "disconnectJNI", anyLong());
+         PowerMockito.doNothing().when(aitt, "setConnectionCallbackJNI", anyLong());
          PowerMockito.doNothing().when(aitt, "publishJNI", anyLong(), anyString(), any(byte[].class), anyLong(), anyInt(), anyInt(), anyBoolean());
          PowerMockito.when(aitt, "subscribeJNI", anyLong(), anyString(), anyInt(), anyInt()).thenReturn(1L);
          PowerMockito.doNothing().when(aitt, "unsubscribeJNI", anyLong(), anyLong());
@@ -403,6 +404,44 @@ public class AittUnitTest {
          aitt.disconnect();
       } catch (Exception e) {
          fail("Failed testUnsubscribeInvalidTopic " + e);
+      }
+   }
+
+   @Test
+   public void testSetConnectionCallback_P14() {
+      try {
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.setConnectionCallback(new Aitt.ConnectionCallback() {
+            @Override
+            public void onConnected() {}
+
+            @Override
+            public void onDisconnected() {}
+         });
+         aitt.connect(brokerIp, port);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSetConnectionCallback " + e);
+      }
+   }
+
+   @Test
+   public void testSetConnectionCallbackInvalidCallback_N07() throws IllegalArgumentException {
+      try {
+         Aitt aitt = PowerMockito.mock(Aitt.class);
+         initialize(aitt);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.setConnectionCallback(null);
+         aitt.connect(brokerIp, port);
+
+         aitt.disconnect();
+      } catch (Exception e) {
+         fail("Failed testSetConnectionCallbackInvalidCallback " + e);
       }
    }
 }

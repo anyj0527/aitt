@@ -227,6 +227,49 @@ void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI(JNIE
     }
 }
 
+void AittNativeInterface::Java_com_samsung_android_aitt_Aitt_setConnectionCallbackJNI(JNIEnv *env,
+      jobject jniInterfaceObject, jlong handle)
+{
+    if (env == nullptr || jniInterfaceObject == nullptr) {
+        JNI_LOG(ANDROID_LOG_ERROR, TAG, "Env or Jobject is null");
+        return;
+    }
+    AittNativeInterface *instance = reinterpret_cast<AittNativeInterface *>(handle);
+
+    try {
+        instance->aitt.SetConnectionCallback(
+                [&](AITT &handle, int status, void *user_data) -> void {
+                    AittNativeInterface *instance = reinterpret_cast<AittNativeInterface *>(user_data);
+                    JNIEnv *env;
+                    int JNIStatus =
+                            cbContext.jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+                    if (JNIStatus == JNI_EDETACHED) {
+                        if (cbContext.jvm->AttachCurrentThread(&env, nullptr) != 0) {
+                            JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to attach current thread");
+                            return;
+                        }
+                    } else if (JNIStatus == JNI_EVERSION) {
+                        JNI_LOG(ANDROID_LOG_ERROR, TAG, "Unsupported version");
+                        return;
+                    }
+                    if (env != nullptr && instance->cbObject != nullptr) {
+                        env->CallVoidMethod(instance->cbObject, cbContext.connectionCallbackMethodID,
+                                            (jint)status);
+                        if (env->ExceptionCheck() == true) {
+                            JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to call void method");
+                            cbContext.jvm->DetachCurrentThread();
+                            return;
+                        }
+                    }
+                    cbContext.jvm->DetachCurrentThread();
+                },
+                reinterpret_cast<void *>(instance));
+    } catch (std::exception &e) {
+        JNI_LOG(ANDROID_LOG_ERROR, TAG, "Failed to set connection callback");
+        JNI_LOG(ANDROID_LOG_ERROR, TAG, e.what());
+    }
+}
+
 jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI(JNIEnv *env,
       jobject jniInterfaceObject, jstring id, jstring ip, jboolean clearSession)
 {
@@ -267,6 +310,8 @@ jlong AittNativeInterface::Java_com_samsung_android_aitt_Aitt_initJNI(JNIEnv *en
         jclass callbackClass = env->FindClass("com/samsung/android/aitt/Aitt");
         cbContext.messageCallbackMethodID =
               env->GetMethodID(callbackClass, "messageCallback", "(Ljava/lang/String;[B)V");
+        cbContext.connectionCallbackMethodID =
+              env->GetMethodID(callbackClass, "connectionStatusCallback", "(I)V");
         env->DeleteLocalRef(callbackClass);
     } catch (std::exception &e) {
         JNI_LOG(ANDROID_LOG_ERROR, TAG, e.what());
@@ -308,7 +353,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved)
                       AittNativeInterface::Java_com_samsung_android_aitt_Aitt_unsubscribeJNI)},
           {"disconnectJNI", "(J)V",
                 reinterpret_cast<void *>(
-                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI)}};
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_disconnectJNI)},
+          {"setConnectionCallbackJNI", "(J)V",
+                reinterpret_cast<void *>(
+                      AittNativeInterface::Java_com_samsung_android_aitt_Aitt_setConnectionCallbackJNI)}};
     if (env->RegisterNatives(klass, aitt_jni_methods,
               sizeof(aitt_jni_methods) / sizeof(aitt_jni_methods[0]))) {
         env->DeleteLocalRef(klass);

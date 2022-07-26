@@ -65,6 +65,7 @@ public class Aitt {
     private HashMap<String, HostTable> publishTable = new HashMap<>();
     private HashMap<String, Pair<Protocol , Object>> subscribeMap = new HashMap<>();
     private HashMap<String, Long> aittSubId = new HashMap<String, Long>();
+    private ConnectionCallback connectionCallback = null;
 
     private long instance = 0;
     private String ip;
@@ -126,6 +127,14 @@ public class Aitt {
     }
 
     /**
+     * Interface to implement connection status callback
+     */
+    public interface ConnectionCallback {
+        void onConnected();
+        void onDisconnected();
+    }
+
+    /**
      * Interface to implement callback method for subscribe call
      */
     public interface SubscribeCallback {
@@ -161,6 +170,18 @@ public class Aitt {
         }
         this.ip = ip;
         this.appContext = appContext;
+    }
+
+    /**
+     * Method to set connection status callback
+     * @param callback ConnectionCallback to which status should be updated
+     */
+    public void setConnectionCallback(ConnectionCallback callback) {
+        if (callback == null) {
+            throw new IllegalArgumentException("Invalid callback");
+        }
+        connectionCallback = callback;
+        setConnectionCallbackJNI(instance);
     }
 
     /**
@@ -451,6 +472,18 @@ public class Aitt {
     }
 
     /**
+     * Method invoked from JNI layer to Java layer for MQTT connection status update
+     * @param status Status of the MQTT connection
+     */
+    private void connectionStatusCallback(int status) {
+        if (status == 0) {
+            connectionCallback.onDisconnected();
+        } else {
+            connectionCallback.onConnected();
+        }
+    }
+
+    /**
      * Method invoked from JNI layer to Java layer for message exchange
      * @param topic Topic to which message callback is called
      * @param payload Byte data shared from JNI layer to Java layer
@@ -637,6 +670,9 @@ public class Aitt {
 
     /* Native API for disconnecting from broker */
     private native void disconnectJNI(long instance);
+
+    /* Native API for setting connection callback */
+    private native void setConnectionCallbackJNI(long instance);
 
     /* Native API for publishing to a topic */
     private native void publishJNI(long instance, final String topic, final byte[] data, long datalen, int protocol, int qos, boolean retain);
