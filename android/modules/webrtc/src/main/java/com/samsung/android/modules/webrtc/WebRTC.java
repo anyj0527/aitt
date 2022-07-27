@@ -320,7 +320,9 @@ public class WebRTC {
     private void addVideoTrack() {
         MediaStream mediaStream = factory.createLocalMediaStream("ARDAMS");
         mediaStream.addTrack(videoTrackFromSource);
-        peerConnection.addStream(mediaStream);
+        if(peerConnection!=null){
+            peerConnection.addStream(mediaStream);
+        }
     }
 
     /**

@@ -16,24 +16,26 @@
 package com.samsung.android.aitt;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 
 import android.content.Context;
 
+
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.api.support.membermodification.MemberMatcher;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.util.EnumSet;
 
 @RunWith(PowerMockRunner.class)
@@ -46,30 +48,65 @@ public class AittUnitTest {
    private final int port = 1803;
    private final String topic = "aitt/test";
    private final String message = "test message";
+   private final String aittId = "aitt";
 
-   private static void initialize(Aitt aitt) {
+   @Before
+   public void initialize() {
       try {
-         PowerMockito.when(aitt, "initJNI", anyString(), anyString(), anyBoolean()).thenReturn(1L);
-         PowerMockito.doNothing().when(aitt, "connectJNI", anyLong(), anyString(), anyInt());
-         PowerMockito.doNothing().when(aitt, "disconnectJNI", anyLong());
-         PowerMockito.doNothing().when(aitt, "setConnectionCallbackJNI", anyLong());
-         PowerMockito.doNothing().when(aitt, "publishJNI", anyLong(), anyString(), any(byte[].class), anyLong(), anyInt(), anyInt(), anyBoolean());
-         PowerMockito.when(aitt, "subscribeJNI", anyLong(), anyString(), anyInt(), anyInt()).thenReturn(1L);
-         PowerMockito.doNothing().when(aitt, "unsubscribeJNI", anyLong(), anyLong());
-      } catch (Exception e) {
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "initJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return 1L;
+            }
+         });
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "connectJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return null;
+            }
+         });
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "disconnectJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return null;
+            }
+         });
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "setConnectionCallbackJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return null;
+            }
+         });
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "publishJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return null;
+            }
+         });
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "subscribeJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return 1L;
+            }
+         });
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "unsubscribeJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return null;
+            }
+         });
+      } catch(Exception e) {
          fail("Failed to mock Aitt " + e);
       }
    }
 
    @Test
-   public void testInitialize_P01() {
+   public void testAittConstructor_P01(){
+      String id = "aitt";
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
-
+         Aitt aitt = new Aitt(appContext, id);
          assertNotNull("Aitt Instance not null", aitt);
-         aitt.close();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testInitialize " + e);
       }
    }
@@ -80,7 +117,7 @@ public class AittUnitTest {
       try {
          Aitt aitt = new Aitt(appContext, _id);
          aitt.close();
-      } catch (InstantiationException e) {
+      } catch(InstantiationException e) {
          fail("Error during testInitializeInvalidId" + e);
       }
    }
@@ -91,16 +128,32 @@ public class AittUnitTest {
       try {
          Aitt aitt = new Aitt(null, _id);
          aitt.close();
-      } catch (InstantiationException e) {
-         fail( "Error during testInitializeInvalidContext" + e);
+      } catch(InstantiationException e) {
+         fail("Error during testInitializeInvalidContext" + e);
       }
+   }
+
+   @Test(expected = InstantiationException.class)
+   public void testConstructorFail_N03() throws InstantiationException {
+      try{
+         PowerMockito.replace(MemberMatcher.method(Aitt.class, "initJNI")).with(new InvocationHandler() {
+            @Override
+            public Object invoke(Object o, Method method, Object[] objects) throws Throwable {
+               return 0L;
+            }
+         });
+      } catch(Exception e) {
+         fail("Failed to replace method" + e);
+      }
+      String id = "aitt";
+      Aitt aitt = new Aitt(appContext,id);
+      aitt.close();
    }
 
    @Test
    public void testConnect_P02() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -114,14 +167,13 @@ public class AittUnitTest {
    @Test
    public void testConnectWithoutIP_P03() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(null);
 
          aitt.close();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testConnectWithoutIP " + e);
       }
    }
@@ -129,14 +181,13 @@ public class AittUnitTest {
    @Test
    public void testDisconnect_P04() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testDisconnect " + e);
       }
    }
@@ -144,8 +195,7 @@ public class AittUnitTest {
    @Test
    public void testPublishMqtt_P05() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -154,7 +204,7 @@ public class AittUnitTest {
          aitt.publish(topic, payload);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testPublishMqtt " + e);
       }
    }
@@ -162,8 +212,7 @@ public class AittUnitTest {
    @Test
    public void testPublishWebRTC_P06() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -172,34 +221,33 @@ public class AittUnitTest {
          aitt.publish(topic, payload, Aitt.Protocol.WEBRTC, Aitt.QoS.AT_MOST_ONCE, false);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testPublishWebRTC " + e);
       }
    }
 
    @Test
-   public void testPublishInvalidTopic_N03() throws IllegalArgumentException {
+   public void testPublishInvalidTopic_N04(){
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
-
-         assertNotNull("Aitt Instance not null", aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
          aitt.connect(brokerIp, port);
-
          String _topic = "";
          byte[] payload = message.getBytes();
-         aitt.publish(_topic, payload);
+
+         assertThrows(IllegalArgumentException.class, () -> {
+            aitt.publish(_topic, payload);
+         });
+
          aitt.disconnect();
-      } catch (Exception e) {
-         fail("Failed testPublishInvalidTopic " + e);
+      } catch(Exception e){
+         fail("wrong exception thrown" + e);
       }
    }
 
    @Test
    public void testPublishAnyProtocol_P07() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -208,7 +256,7 @@ public class AittUnitTest {
          aitt.publish(topic, payload, Aitt.Protocol.TCP, Aitt.QoS.AT_LEAST_ONCE, false);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testPublishAnyProtocol " + e);
       }
    }
@@ -216,8 +264,7 @@ public class AittUnitTest {
    @Test
    public void testPublishProtocolSet_P08() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -227,16 +274,33 @@ public class AittUnitTest {
          aitt.publish(topic, payload, protocols, Aitt.QoS.AT_MOST_ONCE, false);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testPublishProtocolSet " + e);
+      }
+   }
+
+   @Test
+   public void testPublishInvalidProtocol_N09(){
+      try{
+         Aitt aitt = new Aitt(appContext, aittId);
+         aitt.connect(brokerIp,port);
+         byte[] payload = message.getBytes();
+         EnumSet<Aitt.Protocol> protocols = EnumSet.noneOf(Aitt.Protocol.class);
+
+         assertThrows(IllegalArgumentException.class, () -> {
+            aitt.publish(topic, payload, protocols, Aitt.QoS.AT_MOST_ONCE, false);
+         });
+
+         aitt.disconnect();
+      } catch(Exception e){
+         fail("Failed testPublishInvalidProtocol" + e);
       }
    }
 
    @Test
    public void testSubscribeMqtt_P09() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -250,7 +314,7 @@ public class AittUnitTest {
          });
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testSubscribeMqtt " + e);
       }
    }
@@ -258,8 +322,7 @@ public class AittUnitTest {
    @Test
    public void testSubscribeWebRTC_P10() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -274,47 +337,50 @@ public class AittUnitTest {
                  Aitt.Protocol.WEBRTC, Aitt.QoS.AT_MOST_ONCE);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testSubscribeWebRTC " + e);
       }
    }
 
-   @Test
-   public void testSubscribeInvalidTopic_N04() throws IllegalArgumentException {
-      try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
 
-         assertNotNull("Aitt Instance not null", aitt);
+   @Test
+   public void testSubscribeInvalidTopic_N05() {
+
+      try{
+         Aitt aitt = new Aitt(appContext, aittId);
          aitt.connect(brokerIp, port);
 
          String _topic = "";
-         aitt.subscribe(_topic, new Aitt.SubscribeCallback() {
-            @Override
-            public void onMessageReceived(AittMessage message) {
-            }
+
+         assertThrows(IllegalArgumentException.class, () -> {
+            aitt.subscribe(_topic, new Aitt.SubscribeCallback() {
+               @Override
+               public void onMessageReceived(AittMessage message) {
+               }
+            });
          });
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e){
          fail("Failed testSubscribeInvalidTopic " + e);
       }
    }
 
    @Test
-   public void testSubscribeInvalidCallback_N05() throws IllegalArgumentException {
+   public void testSubscribeInvalidCallback_N06() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
-         assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
 
-         String _topic = "";
-         aitt.subscribe(_topic, null);
+         String _topic = "topic";
+
+         assertThrows(IllegalArgumentException.class, () -> {
+            aitt.subscribe(_topic, null);
+         });
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testSubscribeInvalidCallback " + e);
       }
    }
@@ -322,8 +388,7 @@ public class AittUnitTest {
    @Test
    public void testSubscribeAnyProtocol_P11() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -338,7 +403,32 @@ public class AittUnitTest {
                  Aitt.Protocol.UDP, Aitt.QoS.AT_MOST_ONCE);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
+         fail("Failed testSubscribeAnyProtocol " + e);
+      }
+   }
+
+   @Test
+   public void testSubscribeInvalidProtocol_N10() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+
+         aitt.connect(brokerIp, port);
+         EnumSet<Aitt.Protocol> protocols = EnumSet.noneOf(Aitt.Protocol.class);
+
+         assertThrows(IllegalArgumentException.class, () -> {
+                    aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+                               @Override
+                               public void onMessageReceived(AittMessage message) {
+                                  String _topic = message.getTopic();
+                                  byte[] payload = message.getPayload();
+                               }
+                            },
+                            protocols, Aitt.QoS.AT_MOST_ONCE);
+                 });
+
+         aitt.disconnect();
+      } catch(Exception e) {
          fail("Failed testSubscribeAnyProtocol " + e);
       }
    }
@@ -346,8 +436,7 @@ public class AittUnitTest {
    @Test
    public void testSubscribeProtocolSet_P12() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -363,7 +452,7 @@ public class AittUnitTest {
                  protocols, Aitt.QoS.EXACTLY_ONCE);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testSubscribeProtocolSet " + e);
       }
    }
@@ -371,8 +460,7 @@ public class AittUnitTest {
    @Test
    public void testUnsubscribe_P13() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
@@ -385,24 +473,25 @@ public class AittUnitTest {
 
          aitt.unsubscribe(topic);
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testUnsubscribe " + e);
       }
    }
 
    @Test
-   public void testUnsubscribeInvalidTopic_N06() throws IllegalArgumentException {
+   public void testUnsubscribeInvalidTopic_N07() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
-         assertNotNull("Aitt Instance not null", aitt);
          aitt.connect(brokerIp, port);
-
          String _topic = "";
-         aitt.unsubscribe(_topic);
+
+         assertThrows(IllegalArgumentException.class, () -> {
+            aitt.unsubscribe(_topic);
+         });
+
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e){
          fail("Failed testUnsubscribeInvalidTopic " + e);
       }
    }
@@ -410,8 +499,7 @@ public class AittUnitTest {
    @Test
    public void testSetConnectionCallback_P14() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
          assertNotNull("Aitt Instance not null", aitt);
          aitt.setConnectionCallback(new Aitt.ConnectionCallback() {
@@ -424,23 +512,23 @@ public class AittUnitTest {
          aitt.connect(brokerIp, port);
 
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testSetConnectionCallback " + e);
       }
    }
 
    @Test
-   public void testSetConnectionCallbackInvalidCallback_N07() throws IllegalArgumentException {
+   public void testSetConnectionCallbackInvalidCallback_N08() {
       try {
-         Aitt aitt = PowerMockito.mock(Aitt.class);
-         initialize(aitt);
+         Aitt aitt = new Aitt(appContext, aittId);
 
-         assertNotNull("Aitt Instance not null", aitt);
-         aitt.setConnectionCallback(null);
+         assertThrows(IllegalArgumentException.class, () -> {
+            aitt.setConnectionCallback(null);
+         });
+
          aitt.connect(brokerIp, port);
-
          aitt.disconnect();
-      } catch (Exception e) {
+      } catch(Exception e) {
          fail("Failed testSetConnectionCallbackInvalidCallback " + e);
       }
    }
