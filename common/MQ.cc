@@ -24,6 +24,7 @@
 #include <stdexcept>
 #include <thread>
 
+#include "AITTEx.h"
 #include "AittTypes.h"
 #include "aitt_internal.h"
 
@@ -153,7 +154,7 @@ void MQ::Connect(const std::string &host, int port, const std::string &username,
         if (ret != MOSQ_ERR_SUCCESS) {
             ERR("mosquitto_username_pw_set(%s, %s) Fail(%s)", username.c_str(), password.c_str(),
                   mosquitto_strerror(ret));
-            throw std::runtime_error(mosquitto_strerror(ret));
+            throw AITTEx(AITTEx::MQTT_ERR, std::string(mosquitto_strerror(ret)));
         }
     }
     ret = mosquitto_connect(handle, host.c_str(), port, keep_alive);
