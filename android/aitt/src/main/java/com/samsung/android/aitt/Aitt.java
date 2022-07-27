@@ -370,7 +370,9 @@ public class Aitt {
             } else {
                 int proto = protocolsToInt(protocols);
                 Long pObject = subscribeJNI(instance, topic, proto, qos.ordinal());
-                aittSubId.put(topic, pObject);
+                synchronized (this) {
+                    aittSubId.put(topic, pObject);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error during subscribe", e);

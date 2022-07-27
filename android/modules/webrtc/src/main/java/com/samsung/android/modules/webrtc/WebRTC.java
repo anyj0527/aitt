@@ -210,13 +210,14 @@ public class WebRTC {
      * @param message Data to be sent over webRTC connection
      * @throws IOException Throws IOException if writing to outStream fails
      */
-    private void sendMessage(boolean isJSON , Object message) throws IOException {
-        Log.d(TAG , message.toString());
-        if(isJSON){
-            outStream.writeObject(new Packet((JSONObject) message));
-        }
-        else{
-            outStream.writeObject(new Packet((String) message));
+    private void sendMessage(boolean isJSON, Object message) throws IOException {
+        Log.d(TAG, message.toString());
+        if (outStream != null) {
+            if (isJSON) {
+                outStream.writeObject(new Packet((JSONObject) message));
+            } else {
+                outStream.writeObject(new Packet((String) message));
+            }
         }
     }
 
@@ -308,7 +309,9 @@ public class WebRTC {
      */
     private void initializePeerConnections() {
         peerConnection = createPeerConnection(factory);
-        localDataChannel = peerConnection.createDataChannel("sendDataChannel", new DataChannel.Init());
+        if (peerConnection != null) {
+            localDataChannel = peerConnection.createDataChannel("sendDataChannel", new DataChannel.Init());
+        }
     }
 
     /**
@@ -563,18 +566,18 @@ public class WebRTC {
             createSocket();
             invokeSendMessage();
 
-            while(isRunning){
+            while (isRunning) {
                 try {
-                    Packet recvPacketNew = (Packet)inputStream.readObject();
-
-                    if(recvPacketNew.isString){
-                        String message = recvPacketNew.obj;
-                        checkPacketMessage(message);
-                    }
-                    else{
-                        JSONObject message = new JSONObject(recvPacketNew.obj);
-                        Log.d(TAG, "connectToSignallingServer: got message " + message);
-                        decodeMessage(message);
+                    Packet recvPacketNew = (Packet) inputStream.readObject();
+                    if (recvPacketNew != null) {
+                        if (recvPacketNew.isString) {
+                            String message = recvPacketNew.obj;
+                            checkPacketMessage(message);
+                        } else {
+                            JSONObject message = new JSONObject(recvPacketNew.obj);
+                            Log.d(TAG, "connectToSignallingServer: got message " + message);
+                            decodeMessage(message);
+                        }
                     }
                 } catch (ClassNotFoundException | JSONException | IOException e) {
                     isRunning = false;
