@@ -21,7 +21,7 @@
 #define MQTT_HANDLER_MSG_QOS 1
 #define MQTT_HANDLER_MGMT_QOS 2
 
-MqttServer::MqttServer(const Config &config)
+MqttServer::MqttServer(const Config &config) : mq(config.GetLocalId(), true)
 {
     broker_ip_ = config.GetBrokerIp();
     broker_port_ = config.GetBrokerPort();
@@ -30,50 +30,17 @@ MqttServer::MqttServer(const Config &config)
     source_id_ = config.GetSourceId();
     is_publisher_ = (id_ == source_id_);
 
-    do {
-        DBG("ID[%s] BROKER IP[%s] BROKER PORT [%d] ROOM[%s] %s", id_.c_str(), broker_ip_.c_str(),
-              broker_port_, room_id_.c_str(), is_publisher_ ? "Publisher" : "Subscriber");
+    DBG("ID[%s] BROKER IP[%s] BROKER PORT [%d] ROOM[%s] %s", id_.c_str(), broker_ip_.c_str(),
+          broker_port_, room_id_.c_str(), is_publisher_ ? "Publisher" : "Subscriber");
 
-        handle_ = mosquitto_new(id_.c_str(), true, this);
-        if (handle_ == nullptr) {
-            ERR("mosquitto_new() Fail");
-            break;
-        }
-
-        int ret = mosquitto_int_option(handle_, MOSQ_OPT_PROTOCOL_VERSION, MQTT_PROTOCOL_V5);
-        if (ret != MOSQ_ERR_SUCCESS) {
-            ERR("mosquitto_int_option() Fail(%s)", mosquitto_strerror(ret));
-            break;
-        }
-
-        mosquitto_connect_callback_set(handle_, OnConnect);
-        mosquitto_disconnect_callback_set(handle_, OnDisconnect);
-        mosquitto_message_v5_callback_set(handle_, MessageCallback);
-
-        ret = mosquitto_loop_start(handle_);
-        if (ret != MOSQ_ERR_SUCCESS) {
-            ERR("mosquitto_loop_start() Fail(%s)", mosquitto_strerror(ret));
-            break;
-        }
-
-        return;
-    } while (0);
-
-    mosquitto_destroy(handle_);
-    throw std::runtime_error("MqttHandler Constructor Error");
+    mq.SetConnectionCallback(std::bind(&MqttServer::ConnectCallBack, this, std::placeholders::_1));
 }
 
 MqttServer::~MqttServer()
 {
-    int ret = mosquitto_loop_stop(handle_, true);
-    if (ret != MOSQ_ERR_SUCCESS)
-        ERR("mosquitto_loop_stop() Fail(%s)", mosquitto_strerror(ret));
-
-    mosquitto_destroy(handle_);
-
-    ret = mosquitto_lib_cleanup();
-    if (ret != MOSQ_ERR_SUCCESS)
-        ERR("Failed to cleanup the mqtt library (%s)", mosquitto_strerror(ret));
+    // Prevent to call below callbacks after destructoring
+    connection_state_changed_cb_ = nullptr;
+    room_message_arrived_cb_ = nullptr;
 }
 
 void MqttServer::SetConnectionState(ConnectionState state)
@@ -83,144 +50,80 @@ void MqttServer::SetConnectionState(ConnectionState state)
         connection_state_changed_cb_(state);
 }
 
-void MqttServer::MessageCallback(mosquitto *handle, void *mqtt_server, const mosquitto_message *msg,
-      const mosquitto_property *props)
+void MqttServer::ConnectCallBack(int status)
 {
-    if (msg->payloadlen == 0) {
-        DBG("Zero payload received");
-        return;
-    }
-
-    auto received_message = std::string(static_cast<char *>(msg->payload), msg->payloadlen);
-
-    INFO("%s received", received_message.c_str());
-    MqttServer *server = static_cast<MqttServer *>(mqtt_server);
-    if (!server)
-        return;
-
-    if (server->IsRoomTopic(msg->topic))
-        server->HandleRoomTopic(received_message.c_str());
-    else if (server->IsSourceTopic(msg->topic))
-        server->HandleSourceTopic(received_message.c_str(), msg->retain);
-    else if (server->IsMessageTopic(msg->topic))
-        server->HandleMessageTopic(received_message.c_str());
+    if (status == AITT_CONNECTED)
+        OnConnect();
     else
-        ERR("Can't handle this topic yet %s", msg->topic);
+        OnDisconnect();
 }
 
-void MqttServer::HandleRoomTopic(const std::string &message)
-{
-    INFO("Room topic");
-    std::string peer_id;
-    if (message.compare(0, 16, "ROOM_PEER_JOINED") == 0) {
-        peer_id = message.substr(17, std::string::npos);
-    } else if (message.compare(0, 14, "ROOM_PEER_LEFT") == 0) {
-        peer_id = message.substr(15, std::string::npos);
-    } else {
-        ERR("Invalid type of Room message %s", message.c_str());
-        return;
-    }
-
-    if (peer_id == id_) {
-        ERR("ignore");
-        return;
-    }
-
-    if (is_publisher_) {
-        if (room_message_arrived_cb_)
-            room_message_arrived_cb_(message);
-    } else {
-        // TODO: ADHOC, will handle this by room
-        if (peer_id != source_id_) {
-            ERR("Not source");
-            return;
-        }
-
-        if (room_message_arrived_cb_)
-            room_message_arrived_cb_(message);
-    }
-}
-
-void MqttServer::HandleSourceTopic(const std::string &message, bool is_retain_message)
-{
-    INFO("Source topic");
-    if (is_publisher_) {
-        ERR("Ignore");
-    } else {
-        ERR("Set source ID %s", message.c_str());
-        SetSourceId(message);
-        SetConnectionState(ConnectionState::Registered);
-    }
-}
-
-void MqttServer::HandleMessageTopic(const std::string &message)
-{
-    INFO("Message topic");
-    if (room_message_arrived_cb_)
-        room_message_arrived_cb_(message);
-}
-
-void MqttServer::OnConnect(mosquitto *handle, void *mqtt_server, int code)
+void MqttServer::OnConnect()
 {
     INFO("Connected to signalling server");
-    // TODO
-    MqttServer *server = static_cast<MqttServer *>(mqtt_server);
-    if (!server)
-        return;
 
     // Sometimes it seems that broker is silently disconnected/reconnected
-    if (server->GetConnectionState() != ConnectionState::Connecting) {
+    if (GetConnectionState() != ConnectionState::Connecting) {
         ERR("Invalid status");
         return;
     }
 
-    server->SetConnectionState(ConnectionState::Connected);
-    server->SetConnectionState(ConnectionState::Registering);
+    SetConnectionState(ConnectionState::Connected);
+    SetConnectionState(ConnectionState::Registering);
     try {
-        server->RegisterWithServer();
+        RegisterWithServer();
     } catch (const std::runtime_error &e) {
         ERR("%s", e.what());
-        server->SetConnectionState(ConnectionState::Connected);
+        SetConnectionState(ConnectionState::Connected);
     }
+}
+
+void MqttServer::OnDisconnect()
+{
+    INFO("mosquitto disconnected");
+
+    SetConnectionState(ConnectionState::Disconnected);
+    // TODO
 }
 
 void MqttServer::RegisterWithServer(void)
 {
     if (connection_state_ != IfaceServer::ConnectionState::Registering) {
-        ERR("Invaild status");
+        ERR("Invaild status(%d)", (int)connection_state_);
         throw std::runtime_error("Invalid status");
-        return;
     }
 
     // Notify Who is source?
     std::string source_topic = room_id_ + std::string("/source");
     if (is_publisher_) {
-        int ret = mosquitto_publish(handle_, nullptr, source_topic.c_str(), id_.size(), id_.c_str(),
-              MQTT_HANDLER_MGMT_QOS, true);
-        if (ret != MOSQ_ERR_SUCCESS) {
-            ERR("mosquitto_publish(%s) Fail(%s)", source_topic.c_str(), mosquitto_strerror(ret));
-            throw std::runtime_error(mosquitto_strerror(ret));
-        }
+        mq.Publish(source_topic, id_.c_str(), id_.size(), AITT_QOS_EXACTLY_ONCE, true);
         SetConnectionState(ConnectionState::Registered);
     } else {
-        int ret =
-              mosquitto_subscribe(handle_, nullptr, source_topic.c_str(), MQTT_HANDLER_MGMT_QOS);
-        if (ret != MOSQ_ERR_SUCCESS) {
-            ERR("mosquitto_subscribe() Fail(%s)", mosquitto_strerror(ret));
-            throw std::runtime_error(mosquitto_strerror(ret));
-        }
+        mq.Subscribe(source_topic,
+              std::bind(&MqttServer::HandleSourceTopic, this, std::placeholders::_1,
+                    std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+                    std::placeholders::_5),
+              nullptr, AITT_QOS_EXACTLY_ONCE);
     }
 }
 
-void MqttServer::OnDisconnect(mosquitto *handle, void *mqtt_server, int code)
+void MqttServer::HandleSourceTopic(aitt::MSG *msg, const std::string &topic, const void *data,
+      const size_t datalen, void *user_data)
 {
-    INFO("mosquitto disconnected(%s)", mosquitto_strerror(code));
-    MqttServer *server = static_cast<MqttServer *>(mqtt_server);
-    if (!server)
+    INFO("Source topic");
+    if (connection_state_ != IfaceServer::ConnectionState::Registering) {
+        ERR("Invaild status(%d)", (int)connection_state_);
         return;
+    }
 
-    server->SetConnectionState(ConnectionState::Disconnected);
-    // TODO
+    if (is_publisher_) {
+        ERR("Ignore");
+    } else {
+        std::string message(static_cast<const char *>(data), datalen);
+        INFO("Set source ID %s", message.c_str());
+        SetSourceId(message);
+        SetConnectionState(ConnectionState::Registered);
+    }
 }
 
 bool MqttServer::IsConnected(void)
@@ -233,15 +136,11 @@ bool MqttServer::IsConnected(void)
 int MqttServer::Connect(void)
 {
     std::string will_message = std::string("ROOM_PEER_LEFT ") + id_;
-    int ret = mosquitto_will_set(handle_, room_id_.c_str(), will_message.size() + 1,
-          will_message.c_str(), 2, false);
-    if (ret != MOSQ_ERR_SUCCESS)
-        throw std::runtime_error(mosquitto_strerror(ret));
+    mq.SetWillInfo(room_id_, will_message.c_str(), will_message.size(), AITT_QOS_EXACTLY_ONCE,
+          false);
 
     SetConnectionState(ConnectionState::Connecting);
-    ret = mosquitto_connect(handle_, broker_ip_.c_str(), broker_port_, 60);
-    if (ret != MOSQ_ERR_SUCCESS)
-        throw std::runtime_error(mosquitto_strerror(ret));
+    mq.Connect(broker_ip_, broker_port_, std::string(), std::string());
 
     return 0;
 }
@@ -250,25 +149,14 @@ int MqttServer::Disconnect(void)
 {
     if (is_publisher_) {
         INFO("remove retained");
-        // There're some differences between Qos 1 and Qos 2...
         std::string source_topic = room_id_ + std::string("/source");
-        int ret = mosquitto_publish(handle_, nullptr, source_topic.c_str(), 0, nullptr,
-              MQTT_HANDLER_MSG_QOS, true);
-        if (ret != MOSQ_ERR_SUCCESS) {
-            ERR("mosquitto_publish(%s) Fail(%s)", source_topic.c_str(), mosquitto_strerror(ret));
-            throw std::runtime_error(mosquitto_strerror(ret));
-        }
+        mq.Publish(source_topic, nullptr, 0, AITT_QOS_AT_LEAST_ONCE, true);
     }
-    // Need PEER_LEFT message or use Last will?
-    std::string left_message = std::string("ROOM_PEER_LEFT ") + id_;
-    int ret = mosquitto_publish(handle_, nullptr, room_id_.c_str(), left_message.size(),
-          left_message.c_str(), MQTT_HANDLER_MSG_QOS, false);
-    if (ret != MOSQ_ERR_SUCCESS)
-        throw std::runtime_error(mosquitto_strerror(ret));
 
-    ret = mosquitto_disconnect(handle_);
-    if (ret != MOSQ_ERR_SUCCESS)
-        throw std::runtime_error(mosquitto_strerror(ret));
+    std::string left_message = std::string("ROOM_PEER_LEFT ") + id_;
+    mq.Publish(room_id_, left_message.c_str(), left_message.size(), AITT_QOS_AT_LEAST_ONCE, false);
+
+    mq.Disconnect();
 
     room_id_ = std::string("");
 
@@ -278,7 +166,7 @@ int MqttServer::Disconnect(void)
 
 int MqttServer::SendMessage(const std::string &peer_id, const std::string &msg)
 {
-    if (!handle_ || room_id_.empty()) {
+    if (room_id_.empty()) {
         ERR("Invaild status");
         return -1;
     }
@@ -288,15 +176,9 @@ int MqttServer::SendMessage(const std::string &peer_id, const std::string &msg)
     }
 
     std::string receiver_topic = room_id_ + std::string("/") + peer_id;
-    std::string mqtt_server_formatted_message =
-          std::string("ROOM_PEER_MSG ") + id_ + std::string(" ") + msg;
-    int ret = mosquitto_publish(handle_, nullptr, receiver_topic.c_str(),
-          mqtt_server_formatted_message.size(), mqtt_server_formatted_message.c_str(),
-          MQTT_HANDLER_MSG_QOS, false);
-    if (ret != MOSQ_ERR_SUCCESS) {
-        ERR("mosquitto_publish(%s) Fail(%s)", room_id_.c_str(), mosquitto_strerror(ret));
-        return -1;
-    }
+    std::string server_formatted_msg = "ROOM_PEER_MSG " + id_ + " " + msg;
+    mq.Publish(receiver_topic, server_formatted_msg.c_str(), server_formatted_msg.size(),
+          AITT_QOS_AT_LEAST_ONCE);
 
     return 0;
 }
@@ -335,30 +217,73 @@ void MqttServer::JoinRoom(const std::string &room_id)
     if (room_id.empty() || room_id != room_id_) {
         ERR("Invaild room id");
         throw std::runtime_error(std::string("Invalid room_id"));
-        return;
     }
 
     // Subscribe PEER_JOIN PEER_LEFT
-    int ret = mosquitto_subscribe(handle_, nullptr, room_id_.c_str(), MQTT_HANDLER_MGMT_QOS);
-    if (ret != MOSQ_ERR_SUCCESS) {
-        ERR("mosquitto_subscribe() Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
-    }
+    mq.Subscribe(room_id_,
+          std::bind(&MqttServer::HandleRoomTopic, this, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+                std::placeholders::_5),
+          nullptr, AITT_QOS_EXACTLY_ONCE);
 
     // Subscribe PEER_MSG
     std::string receiving_topic = room_id + std::string("/") + id_;
-    ret = mosquitto_subscribe(handle_, nullptr, receiving_topic.c_str(), 1);
-    if (ret != MOSQ_ERR_SUCCESS) {
-        ERR("mosquitto_subscribe() Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
-    }
+    mq.Subscribe(receiving_topic,
+          std::bind(&MqttServer::HandleMessageTopic, this, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, std::placeholders::_4,
+                std::placeholders::_5),
+          nullptr, AITT_QOS_AT_LEAST_ONCE);
+
     INFO("Subscribe room topics");
 
     if (!is_publisher_) {
         std::string join_message = std::string("ROOM_PEER_JOINED ") + id_;
-        ret = mosquitto_publish(handle_, nullptr, room_id_.c_str(), join_message.size(),
-              join_message.c_str(), MQTT_HANDLER_MGMT_QOS, false);
-        if (ret != MOSQ_ERR_SUCCESS)
-            throw std::runtime_error(mosquitto_strerror(ret));
+        mq.Publish(room_id_, join_message.c_str(), join_message.size(), AITT_QOS_EXACTLY_ONCE);
     }
+}
+
+void MqttServer::HandleRoomTopic(aitt::MSG *msg, const std::string &topic, const void *data,
+      const size_t datalen, void *user_data)
+{
+    std::string message(static_cast<const char *>(data), datalen);
+    INFO("Room topic(%s, %s)", topic.c_str(), message.c_str());
+
+    std::string peer_id;
+    if (message.compare(0, 16, "ROOM_PEER_JOINED") == 0) {
+        peer_id = message.substr(17, std::string::npos);
+    } else if (message.compare(0, 14, "ROOM_PEER_LEFT") == 0) {
+        peer_id = message.substr(15, std::string::npos);
+    } else {
+        ERR("Invalid type of Room message %s", message.c_str());
+        return;
+    }
+
+    if (peer_id == id_) {
+        ERR("ignore");
+        return;
+    }
+
+    if (is_publisher_) {
+        if (room_message_arrived_cb_)
+            room_message_arrived_cb_(message);
+    } else {
+        // TODO: ADHOC, will handle this by room
+        if (peer_id != source_id_) {
+            ERR("peer(%s) is Not source(%s)", peer_id.c_str(), source_id_.c_str());
+            return;
+        }
+
+        if (room_message_arrived_cb_)
+            room_message_arrived_cb_(message);
+    }
+}
+
+void MqttServer::HandleMessageTopic(aitt::MSG *msg, const std::string &topic, const void *data,
+      const size_t datalen, void *user_data)
+{
+    INFO("Message topic");
+    std::string message(static_cast<const char *>(data), datalen);
+
+    if (room_message_arrived_cb_)
+        room_message_arrived_cb_(message);
 }

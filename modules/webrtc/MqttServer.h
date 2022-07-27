@@ -16,16 +16,22 @@
 
 #pragma once
 
-#include <mosquitto.h>
+#include <MQ.h>
 
 #include "Config.h"
 #include "IfaceServer.h"
 
 class MqttServer : public IfaceServer {
   public:
-    MqttServer() = delete;
-    MqttServer(const Config &config);
-    ~MqttServer();
+    explicit MqttServer(const Config &config);
+    virtual ~MqttServer();
+
+    void SetConnectionStateChangedCb(
+          std::function<void(ConnectionState)> connection_state_changed_cb) override
+    {
+        connection_state_changed_cb_ = connection_state_changed_cb;
+    };
+    void UnsetConnectionStateChangedCb(void) override { connection_state_changed_cb_ = nullptr; };
 
     bool IsConnected(void) override;
     int Connect(void) override;
@@ -40,25 +46,6 @@ class MqttServer : public IfaceServer {
     std::string GetId(void) const { return id_; };
     std::string GetSourceId(void) const { return source_id_; };
     void SetSourceId(const std::string &source_id) { source_id_ = source_id; };
-    bool IsRoomTopic(const std::string &topic) { return topic == room_id_; };
-    bool IsSourceTopic(const std::string &topic)
-    {
-        return topic == (room_id_ + std::string("/source"));
-    };
-    bool IsMessageTopic(const std::string &topic)
-    {
-        return topic == (room_id_ + std::string("/") + id_);
-    };
-    void HandleRoomTopic(const std::string &message);
-    void HandleSourceTopic(const std::string &message, bool is_retain_message);
-    void HandleMessageTopic(const std::string &message);
-
-    void SetConnectionStateChangedCb(
-          std::function<void(ConnectionState)> connection_state_changed_cb) override
-    {
-        connection_state_changed_cb_ = connection_state_changed_cb;
-    };
-    void UnsetConnectionStateChangedCb(void) { connection_state_changed_cb_ = nullptr; };
 
     void SetRoomMessageArrivedCb(std::function<void(const std::string &)> room_message_arrived_cb)
     {
@@ -69,19 +56,25 @@ class MqttServer : public IfaceServer {
   private:
     static void MessageCallback(mosquitto *handle, void *mqtt_server, const mosquitto_message *msg,
           const mosquitto_property *props);
-    static void OnConnect(mosquitto *handle, void *mqtt_server, int code);
-    static void OnDisconnect(mosquitto *handle, void *mqtt_server, int code);
+    void OnConnect();
+    void OnDisconnect();
+    void ConnectCallBack(int status);
+    void HandleRoomTopic(aitt::MSG *msg, const std::string &topic, const void *data,
+          const size_t datalen, void *user_data);
+    void HandleSourceTopic(aitt::MSG *msg, const std::string &topic, const void *data,
+          const size_t datalen, void *user_data);
+    void HandleMessageTopic(aitt::MSG *msg, const std::string &topic, const void *data,
+          const size_t datalen, void *user_data);
 
-  private:
     std::string broker_ip_;
     int broker_port_;
     std::string id_;
     std::string room_id_;
     std::string source_id_;
     bool is_publisher_;
+    aitt::MQ mq;
 
     ConnectionState connection_state_;
     std::function<void(ConnectionState)> connection_state_changed_cb_;
     std::function<void(const std::string &)> room_message_arrived_cb_;
-    mosquitto *handle_;
 };

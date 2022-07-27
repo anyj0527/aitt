@@ -77,6 +77,10 @@ MQ::MQ(const std::string &id, bool clear_session)
 MQ::~MQ(void)
 {
     INFO("Destructor");
+    int ret;
+    ret = mosquitto_loop_stop(handle, true);
+    if (ret != MOSQ_ERR_SUCCESS)
+        ERR("mosquitto_loop_stop() Fail(%s)", mosquitto_strerror(ret));
 
     if (mq_connect_thread.joinable())
         mq_connect_thread.join();
@@ -85,11 +89,6 @@ MQ::~MQ(void)
     connect_cb = nullptr;
     subscribers.clear();
     callback_lock.unlock();
-
-    int ret;
-    ret = mosquitto_loop_stop(handle, true);
-    if (ret != MOSQ_ERR_SUCCESS)
-        ERR("mosquitto_loop_stop() Fail(%s)", mosquitto_strerror(ret));
 
     mosquitto_destroy(handle);
 
@@ -353,7 +352,7 @@ void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void 
     if (subscribers_iterating)
         new_subscribers.push_back(data);
     else
-    subscribers.push_back(data);
+        subscribers.push_back(data);
 
     return static_cast<void *>(data);
 }

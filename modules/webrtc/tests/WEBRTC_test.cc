@@ -78,6 +78,7 @@ TEST_F(MqttServerTest, Positive_Connect_Anytime)
 
         g_main_loop_run(loop_);
 
+        server.UnsetConnectionStateChangedCb();
         server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
@@ -132,6 +133,9 @@ TEST_F(MqttServerTest, Positive_Connect_Src_Sinks_Anytime)
 
         g_main_loop_run(loop_);
 
+        src_server.UnsetConnectionStateChangedCb();
+        first_sink_server.UnsetConnectionStateChangedCb();
+        second_sink_server.UnsetConnectionStateChangedCb();
         src_server.Disconnect();
         first_sink_server.Disconnect();
         second_sink_server.Disconnect();
@@ -173,6 +177,7 @@ TEST_F(MqttServerTest, Positive_Disconnect_Anytime)
 
         g_main_loop_run(loop_);
 
+        server.UnsetConnectionStateChangedCb();
         server.Disconnect();
 
         EXPECT_EQ(server.IsConnected(), false) << "Should return not connected";
@@ -245,6 +250,8 @@ TEST_F(MqttServerTest, Positive_JoinRoom_Anytime)
         server.Connect();
 
         g_main_loop_run(loop_);
+
+        server.UnsetConnectionStateChangedCb();
         server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
@@ -320,6 +327,8 @@ TEST_F(MqttServerTest, Positive_src_sink)
 
         g_main_loop_run(loop_);
 
+        src_server.UnsetConnectionStateChangedCb();
+        sink_server.UnsetConnectionStateChangedCb();
         src_server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
@@ -352,6 +361,8 @@ TEST_F(MqttServerTest, Positive_sink_src)
 
         g_main_loop_run(loop_);
 
+        src_server.UnsetConnectionStateChangedCb();
+        sink_server.UnsetConnectionStateChangedCb();
         src_server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
@@ -413,6 +424,8 @@ TEST_F(MqttServerTest, Positive_src_sink_disconnect_src_first_Anytime)
 
         g_main_loop_run(loop_);
 
+        src_server.UnsetConnectionStateChangedCb();
+        sink_server.UnsetConnectionStateChangedCb();
         sink_server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
@@ -445,6 +458,8 @@ TEST_F(MqttServerTest, Positive_sink_src_disconnect_src_first_Anytime)
 
         g_main_loop_run(loop_);
 
+        src_server.UnsetConnectionStateChangedCb();
+        sink_server.UnsetConnectionStateChangedCb();
         sink_server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
@@ -572,6 +587,9 @@ TEST_F(MqttServerTest, Positive_SendMessageThreeWay_Src_Sinks1_Anytime)
 
         g_main_loop_run(loop_);
 
+        src_server.UnsetConnectionStateChangedCb();
+        first_sink_server.UnsetConnectionStateChangedCb();
+        second_sink_server.UnsetConnectionStateChangedCb();
         src_server.Disconnect();
     } catch (...) {
         FAIL() << "Expected No throw";
