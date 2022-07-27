@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <AITT.h>
 #include <MainLoopHandler.h>
 #include <TransportModule.h>
 #include <flatbuffers/flexbuffers.h>
@@ -28,7 +27,6 @@
 
 #include "TCPServer.h"
 
-using AITT = aitt::AITT;
 using TransportModule = aitt::TransportModule;
 using MainLoopHandler = aitt::MainLoopHandler;
 

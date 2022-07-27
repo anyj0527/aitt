@@ -15,6 +15,7 @@
  */
 #include "Module.h"
 
+#include <MQ.h>
 #include <unistd.h>
 
 #include "aitt_internal.h"
@@ -70,7 +71,7 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
     for (PublishMap::iterator it = publishTable.begin(); it != publishTable.end(); ++it) {
         // NOTE:
         // Find entries that have matched with the given topic
-        if (!AITT::CompareTopic(it->first, topic))
+        if (!aitt::MQ::CompareTopic(it->first, topic))
             continue;
 
         // NOTE:
@@ -247,7 +248,7 @@ void Module::DiscoveryMessageCallback(const std::string &clientId, const std::st
     //       },
     //    },
     // }
-    if (!status.compare(AITT::WILL_LEAVE_NETWORK)) {
+    if (!status.compare(aitt::AITT::WILL_LEAVE_NETWORK)) {
         {
             std::lock_guard<std::mutex> autoLock(clientTableLock);
             // Delete from the { clientId : Host } mapping table
