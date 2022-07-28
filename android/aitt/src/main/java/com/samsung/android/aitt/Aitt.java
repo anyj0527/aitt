@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Class creates a Java layer to operate between application and JNI layer for AITT C++
@@ -115,14 +116,14 @@ public class Aitt {
     /**
      * HostTable to store String and PortTable instances
      */
-    private class HostTable {
+    private static class HostTable {
         HashMap<String, PortTable> hostMap = new HashMap<>();
     }
 
     /**
      * PortTable to store port with protocol, webRTC transportHandler object instance
      */
-    private class PortTable {
+    private static class PortTable {
         HashMap<Integer, Pair<Protocol , Object>> portMap = new HashMap<>();
     }
 
@@ -546,8 +547,8 @@ public class Aitt {
             String status = map.get(STATUS).asString();
             if (status != null && status.compareTo(WILL_LEAVE_NETWORK) == 0) {
                 synchronized (this) {
-                    for (String _topic : publishTable.keySet()) {
-                        HostTable hostTable = publishTable.get(_topic);
+                    for (Map.Entry<String, HostTable> entry : publishTable.entrySet()) {
+                        HostTable hostTable = entry.getValue();
                         if (hostTable != null) {
                             hostTable.hostMap.remove(host);
                         }

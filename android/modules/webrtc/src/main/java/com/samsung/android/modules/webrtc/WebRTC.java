@@ -224,7 +224,7 @@ public class WebRTC {
     /**
      * Class to create proxy video sink
      */
-    private class ProxyVideoSink implements VideoSink {
+    private static class ProxyVideoSink implements VideoSink {
 
         private ReceiveDataCallback dataCallback;
 
