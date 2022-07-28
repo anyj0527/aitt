@@ -240,7 +240,7 @@ public class AittUnitTest {
 
          aitt.disconnect();
       } catch(Exception e){
-         fail("wrong exception thrown" + e);
+         fail("Failed testPublishInvalidTopic" + e);
       }
    }
 
