@@ -43,7 +43,7 @@ TEST_F(MQMockTest, Negative_Create_lib_init_Anytime)
         aitt::MQ mq(TEST_CLIENT_ID, true);
         FAIL() << "lib_init must be failed";
     } catch (std::exception &e) {
-        ASSERT_STREQ(e.what(), "MQ Constructor Error");
+        ASSERT_STREQ(e.what(), "MQTT failure : MQ Constructor Error");
     }
 }
 
@@ -59,7 +59,7 @@ TEST_F(MQMockTest, Negative_Create_new_Anytime)
         aitt::MQ mq(TEST_CLIENT_ID, true);
         FAIL() << "lib_init must be failed";
     } catch (std::exception &e) {
-        ASSERT_STREQ(e.what(), "MQ Constructor Error");
+        ASSERT_STREQ(e.what(), "MQTT failure : MQ Constructor Error");
     }
 }
 
@@ -183,7 +183,7 @@ TEST_F(MQMockTest, Negative_Connect_will_set_Anytime)
         mq.Connect(TEST_HOST, TEST_PORT, "", "");
         FAIL() << "Connect() must be failed";
     } catch (std::exception &e) {
-        ASSERT_STREQ(e.what(), mosquitto_strerror(MOSQ_ERR_NOMEM));
+        ASSERT_STREQ(e.what(), "MQTT failure");
     }
 }
 

@@ -72,7 +72,7 @@ MQ::MQ(const std::string &id, bool clear_session)
 
     mosquitto_destroy(handle);
     mosquitto_lib_cleanup();
-    throw std::runtime_error("MQ Constructor Error");
+    throw AITTEx(AITTEx::MQTT_ERR, std::string("MQ Constructor Error"));
 }
 
 MQ::~MQ(void)
@@ -154,13 +154,13 @@ void MQ::Connect(const std::string &host, int port, const std::string &username,
         if (ret != MOSQ_ERR_SUCCESS) {
             ERR("mosquitto_username_pw_set(%s, %s) Fail(%s)", username.c_str(), password.c_str(),
                   mosquitto_strerror(ret));
-            throw AITTEx(AITTEx::MQTT_ERR, std::string(mosquitto_strerror(ret)));
+            throw AITTEx(AITTEx::MQTT_ERR);
         }
     }
     ret = mosquitto_connect(handle, host.c_str(), port, keep_alive);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_connect(%s, %d) Fail(%s)", host.c_str(), port, mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 }
 
@@ -169,7 +169,7 @@ void MQ::SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, in
     int ret = mosquitto_will_set(handle, topic.c_str(), szmsg, msg, qos, retain);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_will_set(%s) Fail(%s)", topic.c_str(), mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 }
 
@@ -178,7 +178,7 @@ void MQ::Disconnect(void)
     int ret = mosquitto_disconnect(handle);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_disconnect() Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     mosquitto_will_clear(handle);
@@ -271,7 +271,7 @@ void MQ::Publish(const std::string &topic, const void *data, const size_t datale
     int ret = mosquitto_publish(handle, &mid, topic.c_str(), datalen, data, qos, retain);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_publish(%s) Fail(%s)", topic.c_str(), mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 }
 
@@ -285,19 +285,19 @@ void MQ::PublishWithReply(const std::string &topic, const void *data, const size
     ret = mosquitto_property_add_string(&props, MQTT_PROP_RESPONSE_TOPIC, reply_topic.c_str());
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_property_add_string(response-topic) Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     ret = mosquitto_property_add_binary(&props, MQTT_PROP_CORRELATION_DATA, correlation.c_str(),
           correlation.size());
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_property_add_binary(correlation) Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
     ret = mosquitto_publish_v5(handle, &mid, topic.c_str(), datalen, data, qos, retain, props);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_publish_v5(%s) Fail(%s)", topic.c_str(), mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 }
 
@@ -313,21 +313,21 @@ void MQ::SendReply(MSG *msg, const void *data, const size_t datalen, int qos, bo
           msg->GetCorrelation().c_str(), msg->GetCorrelation().size());
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_property_add_binary(correlation) Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     ret = mosquitto_property_add_string_pair(&props, MQTT_PROP_USER_PROPERTY,
           REPLY_SEQUENCE_NUM_KEY.c_str(), std::to_string(msg->GetSequence()).c_str());
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_property_add_string_pair(squenceNum) Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     ret = mosquitto_property_add_string_pair(&props, MQTT_PROP_USER_PROPERTY,
           REPLY_IS_END_SEQUENCE_KEY.c_str(), std::to_string(msg->IsEndSequence()).c_str());
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_property_add_string_pair(IsEndSequence) Fail(%s)", mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     ret = mosquitto_publish_v5(handle, &mId, msg->GetResponseTopic().c_str(), datalen, data, qos,
@@ -335,7 +335,7 @@ void MQ::SendReply(MSG *msg, const void *data, const size_t datalen, int qos, bo
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_publish_v5(%s) Fail(%s)", msg->GetResponseTopic().c_str(),
               mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 }
 
@@ -345,7 +345,7 @@ void *MQ::Subscribe(const std::string &topic, const SubscribeCallback &cb, void 
     int ret = mosquitto_subscribe(handle, &mid, topic.c_str(), qos);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_subscribe(%s) Fail(%s)", topic.c_str(), mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     std::lock_guard<std::recursive_mutex> lock_from_here(callback_lock);
@@ -366,7 +366,7 @@ void *MQ::Unsubscribe(void *sub_handle)
 
     if (it == subscribers.end()) {
         ERR("No Subscription(%p)", sub_handle);
-        throw std::runtime_error("Element is not found");
+        throw AITTEx(AITTEx::NO_DATA);
     }
 
     SubscribeData *data = static_cast<SubscribeData *>(sub_handle);
@@ -386,7 +386,7 @@ void *MQ::Unsubscribe(void *sub_handle)
     int ret = mosquitto_unsubscribe(handle, &mid, topic.c_str());
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_unsubscribe(%s) Fail(%d)", topic.c_str(), ret);
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
 
     return user_data;
@@ -399,7 +399,7 @@ bool MQ::CompareTopic(const std::string &left, const std::string &right)
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_topic_matches_sub(%s, %s) Fail(%s)", left.c_str(), right.c_str(),
               mosquitto_strerror(ret));
-        throw std::runtime_error(mosquitto_strerror(ret));
+        throw AITTEx(AITTEx::MQTT_ERR);
     }
     return result;
 }
