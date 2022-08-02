@@ -15,15 +15,15 @@
  */
 package com.samsung.android.aitt;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
 import android.content.Context;
 
+import com.google.flatbuffers.FlexBuffersBuilder;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -36,19 +36,28 @@ import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(Aitt.class)
 public class AittUnitTest {
    @Mock
-   private Context appContext = mock(Context.class);
+   private final Context appContext = mock(Context.class);
 
+   private static final String JOIN_NETWORK = "connected";
+   private static final String WILL_LEAVE_NETWORK = "disconnected";
+   private static final String JAVA_SPECIFIC_DISCOVERY_TOPIC = "/java/aitt/discovery/";
+   private static final String AITT_LOCALHOST = "127.0.0.1";
+   private static final int DISCOVERY_MESSAGES_COUNT = 6;
    private final String brokerIp = "192.168.0.1";
    private final int port = 1803;
    private final String topic = "aitt/test";
    private final String message = "test message";
    private final String aittId = "aitt";
+
+   private Method messageCallbackMethod;
 
    @Before
    public void initialize() {
@@ -95,13 +104,139 @@ public class AittUnitTest {
                return null;
             }
          });
+
+         messageCallbackMethod = Aitt.class.getDeclaredMethod("messageCallback", String.class, byte[].class);
+         messageCallbackMethod.setAccessible(true);
       } catch(Exception e) {
          fail("Failed to mock Aitt " + e);
       }
    }
 
+   private byte[] createDiscoveryMessage(int count) {
+      int start;
+      FlexBuffersBuilder builder = new FlexBuffersBuilder(ByteBuffer.allocate(512));
+      start = builder.startMap();
+      switch (count) {
+         case 1:
+            /*
+             *           {
+             *             "status": "connected",
+             *             "host": "127.0.0.1",
+             *             "aitt/topic1": {
+             *                "protocol": TCP,
+             *                "port": 1000,
+             *             }
+             *            }
+             */
+            builder.putString("status", JOIN_NETWORK);
+            builder.putString("host", AITT_LOCALHOST);
+            int secondStart = builder.startMap();
+            builder.putInt("port", 1000);
+            builder.putInt("protocol", Aitt.Protocol.TCP.getValue());
+            builder.endMap("aitt/topic1", secondStart);
+            break;
+         case 2:
+            /*
+             *           {
+             *             "status": "connected",
+             *             "host": "127.0.0.2",
+             *             "aitt/topic1": {
+             *                "protocol": MQTT,
+             *                "port": 2000,
+             *             }
+             *            }
+             */
+            builder.putString("status", JOIN_NETWORK);
+            builder.putString("host", "127.0.0.2");
+            secondStart = builder.startMap();
+            builder.putInt("port", 2000);
+            builder.putInt("protocol", Aitt.Protocol.MQTT.getValue());
+            builder.endMap("aitt/topic1", secondStart);
+            break;
+         case 3:
+            /*
+             *           {
+             *             "status": "connected",
+             *             "host": "127.0.0.1",
+             *             "aitt/topic2": {
+             *                "protocol": MQTT,
+             *                "port": 2000,
+             *             }
+             *            }
+             */
+            builder.putString("status", JOIN_NETWORK);
+            builder.putString("host",AITT_LOCALHOST);
+            secondStart = builder.startMap();
+            builder.putInt("port", 2000);
+            builder.putInt("protocol", Aitt.Protocol.MQTT.getValue());
+            builder.endMap("aitt/topic2", secondStart);
+            break;
+         case 4:
+            /*
+             *           {
+             *             "status": "connected",
+             *             "host": "127.0.0.1",
+             *             "aitt/topic2": {
+             *                "protocol": TCP,
+             *                "port": 4000,
+             *             }
+             *            }
+             */
+            builder.putString("status", JOIN_NETWORK);
+            builder.putString("host",AITT_LOCALHOST);
+            secondStart = builder.startMap();
+            builder.putInt("port", 4000);
+            builder.putInt("protocol", Aitt.Protocol.TCP.getValue());
+            builder.endMap("aitt/topic2", secondStart);
+            break;
+         case 5:
+            /*
+             *           {
+             *             "status": "connected",
+             *             "host": "127.0.0.1",
+             *             "aitt/topic2": {
+             *                "protocol": WEBRTC,
+             *                "port": 2000,
+             *             }
+             *            }
+             */
+            builder.putString("status", JOIN_NETWORK);
+            builder.putString("host",AITT_LOCALHOST);
+            secondStart = builder.startMap();
+            builder.putInt("port", 2000);
+            builder.putInt("protocol", Aitt.Protocol.WEBRTC.getValue());
+            builder.endMap("aitt/topic2", secondStart);
+            break;
+         case 6:
+            /*
+             *           {
+             *             "status": "disconnected",
+             *             "host": "127.0.0.1",
+             *             "aitt/topic1": {
+             *                "protocol": TCP,
+             *                "port": 1000,
+             *             }
+             *            }
+             */
+            builder.putString("status", WILL_LEAVE_NETWORK);
+            builder.putString("host",AITT_LOCALHOST);
+            secondStart = builder.startMap();
+            builder.putInt("port", 1000);
+            builder.putInt("protocol", Aitt.Protocol.TCP.getValue());
+            builder.endMap("aitt/topic1", secondStart);
+            break;
+         default:
+            return null;
+      }
+      builder.endMap(null, start);
+      ByteBuffer bb = builder.finish();
+      byte[] array = new byte[bb.remaining()];
+      bb.get(array,0,array.length);
+      return array;
+   }
+
    @Test
-   public void testAittConstructor_P01(){
+   public void testAittConstructor_P(){
       String id = "aitt";
       try {
          Aitt aitt = new Aitt(appContext, id);
@@ -112,7 +247,7 @@ public class AittUnitTest {
    }
 
    @Test(expected = IllegalArgumentException.class)
-   public void testInitializeInvalidId_N01() {
+   public void testInitializeInvalidId_N() {
       String _id = "";
       try {
          Aitt aitt = new Aitt(appContext, _id);
@@ -123,7 +258,7 @@ public class AittUnitTest {
    }
 
    @Test(expected = IllegalArgumentException.class)
-   public void testInitializeInvalidContext_N02() {
+   public void testInitializeInvalidContext_N() {
       String _id = "";
       try {
          Aitt aitt = new Aitt(null, _id);
@@ -134,7 +269,7 @@ public class AittUnitTest {
    }
 
    @Test(expected = InstantiationException.class)
-   public void testConstructorFail_N03() throws InstantiationException {
+   public void testConstructorFail_N() throws InstantiationException {
       try{
          PowerMockito.replace(MemberMatcher.method(Aitt.class, "initJNI")).with(new InvocationHandler() {
             @Override
@@ -151,7 +286,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testConnect_P02() {
+   public void testConnect_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -165,7 +300,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testConnectWithoutIP_P03() {
+   public void testConnectWithoutIP_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -179,7 +314,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testDisconnect_P04() {
+   public void testDisconnect_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -193,7 +328,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishMqtt_P05() {
+   public void testPublishMqtt_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -210,7 +345,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishWebRTC_P06() {
+   public void testPublishWebRTC_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -227,7 +362,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishInvalidTopic_N04(){
+   public void testPublishInvalidTopic_N(){
       try {
          Aitt aitt = new Aitt(appContext, aittId);
          aitt.connect(brokerIp, port);
@@ -245,7 +380,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishAnyProtocol_P07() {
+   public void testPublishAnyProtocol_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -262,7 +397,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishProtocolSet_P08() {
+   public void testPublishProtocolSet_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -280,7 +415,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testPublishInvalidProtocol_N09(){
+   public void testPublishInvalidProtocol_N(){
       try{
          Aitt aitt = new Aitt(appContext, aittId);
          aitt.connect(brokerIp,port);
@@ -298,7 +433,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeMqtt_P09() {
+   public void testSubscribeMqtt_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -320,7 +455,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeWebRTC_P10() {
+   public void testSubscribeWebRTC_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -344,7 +479,7 @@ public class AittUnitTest {
 
 
    @Test
-   public void testSubscribeInvalidTopic_N05() {
+   public void testSubscribeInvalidTopic_N() {
 
       try{
          Aitt aitt = new Aitt(appContext, aittId);
@@ -367,7 +502,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeInvalidCallback_N06() {
+   public void testSubscribeInvalidCallback_N() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -386,7 +521,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeAnyProtocol_P11() {
+   public void testSubscribeAnyProtocol_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -409,7 +544,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeInvalidProtocol_N10() {
+   public void testSubscribeInvalidProtocol_N() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -434,7 +569,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSubscribeProtocolSet_P12() {
+   public void testSubscribeProtocolSet_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -458,7 +593,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testUnsubscribe_P13() {
+   public void testUnsubscribe_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -479,7 +614,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testUnsubscribeInvalidTopic_N07() {
+   public void testUnsubscribeInvalidTopic_N() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -497,7 +632,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSetConnectionCallback_P14() {
+   public void testSetConnectionCallback_P() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -518,7 +653,7 @@ public class AittUnitTest {
    }
 
    @Test
-   public void testSetConnectionCallbackInvalidCallback_N08() {
+   public void testSetConnectionCallbackInvalidCallback_N() {
       try {
          Aitt aitt = new Aitt(appContext, aittId);
 
@@ -530,6 +665,131 @@ public class AittUnitTest {
          aitt.disconnect();
       } catch(Exception e) {
          fail("Failed testSetConnectionCallbackInvalidCallback " + e);
+      }
+   }
+
+   @Test
+   public void testSubscribeMultipleCallbacks_P() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         Aitt.SubscribeCallback callback1 = message -> {};
+
+         Aitt.SubscribeCallback callback2 = message -> {};
+
+         aitt.subscribe(topic, callback1);
+         aitt.subscribe(topic, callback2);
+
+         aitt.disconnect();
+      } catch(Exception e) {
+         fail("Failed testSubscribeMultipleCallbacks " + e);
+      }
+   }
+
+   // The test covers different cases of updating the publish table
+   @Test
+   public void testDiscoveryMessageCallbackConnected_P() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         int counter = 1;
+         while (counter < DISCOVERY_MESSAGES_COUNT) {
+            byte[] discoveryMessage = createDiscoveryMessage(counter);
+            messageCallbackMethod.invoke(aitt, JAVA_SPECIFIC_DISCOVERY_TOPIC, (Object) discoveryMessage);
+            counter++;
+         }
+
+         aitt.disconnect();
+      } catch(Exception e) {
+         fail("Failed testDiscoveryMessageCallback " + e);
+      }
+   }
+
+   @Test
+   public void testDiscoveryMessageCallbackDisconnected_P() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         int counter = 1;
+         byte[] discoveryMessage = createDiscoveryMessage(counter);
+         messageCallbackMethod.invoke(aitt, JAVA_SPECIFIC_DISCOVERY_TOPIC, (Object) discoveryMessage);
+
+         counter = 6;
+         byte[] disconnectMessage = createDiscoveryMessage(counter);
+         messageCallbackMethod.invoke(aitt, JAVA_SPECIFIC_DISCOVERY_TOPIC, (Object) disconnectMessage);
+         aitt.disconnect();
+      } catch(Exception e) {
+         fail("Failed testDiscoveryMessageCallback " + e);
+      }
+   }
+
+   @Test
+   public void testDiscoveryMessageCallbackEmptyPayload_P() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+
+         assertNotNull("Aitt Instance not null", aitt);
+         aitt.connect(brokerIp, port);
+
+         byte[] discoveryMessage = new byte[0];
+         messageCallbackMethod.invoke(aitt, JAVA_SPECIFIC_DISCOVERY_TOPIC, (Object) discoveryMessage);
+
+         aitt.disconnect();
+      } catch(Exception e) {
+         fail("Failed testDiscoveryMessageCallbackEmptyPayload " + e);
+      }
+   }
+
+   @Test
+   public void testSubscribeCallbackVerifyTopic_P() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+         aitt.connect(brokerIp, port);
+
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+            @Override
+            public void onMessageReceived(AittMessage aittMessage) {
+               String recvTopic = aittMessage.getTopic();
+               assertEquals("Received topic and subscribed topic are equal", recvTopic, topic);
+            }
+         });
+
+         messageCallbackMethod.invoke(aitt, topic, message.getBytes(StandardCharsets.UTF_8));
+
+         aitt.disconnect();
+      } catch(Exception e) {
+         fail("Failed testSubscribeCallback " + e);
+      }
+   }
+
+   @Test
+   public void testSubscribeCallbackVerifyPayload_P() {
+      try {
+         Aitt aitt = new Aitt(appContext, aittId);
+         aitt.connect(brokerIp, port);
+
+         aitt.subscribe(topic, new Aitt.SubscribeCallback() {
+            @Override
+            public void onMessageReceived(AittMessage aittMessage) {
+               String recvMessage = new String(aittMessage.getPayload(), StandardCharsets.UTF_8);
+               assertEquals("Received message and sent message are equal", message, recvMessage);
+            }
+         });
+
+         messageCallbackMethod.invoke(aitt, topic, message.getBytes(StandardCharsets.UTF_8));
+
+         aitt.disconnect();
+      } catch(Exception e) {
+         fail("Failed testSubscribeCallback " + e);
       }
    }
 }

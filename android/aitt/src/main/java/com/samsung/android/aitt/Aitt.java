@@ -495,7 +495,7 @@ public class Aitt {
         try {
             if (topic.compareTo(JAVA_SPECIFIC_DISCOVERY_TOPIC) == 0) {
                 if (payload.length <= 0) {
-                    Log.e(TAG, "Invlaid payload, Ignore");
+                    Log.e(TAG, "Invalid payload, Ignore");
                     return;
                 }
                 discoveryMessageCallback(payload);
@@ -617,7 +617,6 @@ public class Aitt {
      */
     private void messageReceived(AittMessage message) {
         try {
-
             String topic = message.getTopic();
             synchronized (this) {
                 ArrayList<SubscribeCallback> cbList = subscribeCallbacks.get(topic);
