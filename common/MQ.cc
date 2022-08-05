@@ -32,6 +32,7 @@ namespace aitt {
 
 const std::string MQ::REPLY_SEQUENCE_NUM_KEY = "sequenceNum";
 const std::string MQ::REPLY_IS_END_SEQUENCE_KEY = "isEndSequence";
+thread_local bool MQ::in_callback = false;
 
 MQ::MQ(const std::string &id, bool clear_session)
       : handle(nullptr),
@@ -77,14 +78,15 @@ MQ::MQ(const std::string &id, bool clear_session)
 
 MQ::~MQ(void)
 {
-    INFO("Destructor");
     int ret;
-    ret = mosquitto_loop_stop(handle, true);
-    if (ret != MOSQ_ERR_SUCCESS)
-        ERR("mosquitto_loop_stop() Fail(%s)", mosquitto_strerror(ret));
+    INFO("Destructor");
 
     if (mq_connect_thread.joinable())
         mq_connect_thread.join();
+
+    ret = mosquitto_loop_stop(handle, true);
+    if (ret != MOSQ_ERR_SUCCESS)
+        ERR("mosquitto_loop_stop() Fail(%s)", mosquitto_strerror(ret));
 
     callback_lock.lock();
     connect_cb = nullptr;
@@ -98,7 +100,7 @@ MQ::~MQ(void)
         ERR("mosquitto_lib_cleanup() Fail(%s)", mosquitto_strerror(ret));
 }
 
-void MQ::SetConnectionCallback(MQConnectionCallback cb)
+void MQ::SetConnectionCallback(const MQConnectionCallback &cb)
 {
     std::lock_guard<std::recursive_mutex> lock_from_here(callback_lock);
     connect_cb = cb;
@@ -106,16 +108,23 @@ void MQ::SetConnectionCallback(MQConnectionCallback cb)
     if (mq_connect_thread.joinable())
         mq_connect_thread.join();
 
-    // When it's called in the cb, it's blocked.
-    mq_connect_thread = std::thread([&]() {
-        if (cb) {
-            mosquitto_connect_v5_callback_set(handle, ConnectCallback);
-            mosquitto_disconnect_v5_callback_set(handle, DisconnectCallback);
-        } else {
-            mosquitto_connect_v5_callback_set(handle, nullptr);
-            mosquitto_disconnect_v5_callback_set(handle, nullptr);
-        }
-    });
+    if (in_callback) {
+        // When it's called in the cb, it's blocked by lock. That's why it uses thread.
+        mq_connect_thread = std::thread([&]() { SetConnectionCallbackReal(cb ? true : false); });
+    } else {
+        SetConnectionCallbackReal(cb ? true : false);
+    }
+}
+
+void MQ::SetConnectionCallbackReal(bool is_set)
+{
+    if (is_set) {
+        mosquitto_connect_v5_callback_set(handle, ConnectCallback);
+        mosquitto_disconnect_v5_callback_set(handle, DisconnectCallback);
+    } else {
+        mosquitto_connect_v5_callback_set(handle, nullptr);
+        mosquitto_disconnect_v5_callback_set(handle, nullptr);
+    }
 }
 
 void MQ::ConnectCallback(struct mosquitto *mosq, void *obj, int rc, int flag,
@@ -127,8 +136,10 @@ void MQ::ConnectCallback(struct mosquitto *mosq, void *obj, int rc, int flag,
     INFO("Connected : rc(%d), flag(%d)", rc, flag);
 
     std::lock_guard<std::recursive_mutex> lock_from_here(mq->callback_lock);
+    in_callback = true;
     if (mq->connect_cb)
         mq->connect_cb(AITT_CONNECTED);
+    in_callback = false;
 }
 
 void MQ::DisconnectCallback(struct mosquitto *mosq, void *obj, int rc,
@@ -140,8 +151,10 @@ void MQ::DisconnectCallback(struct mosquitto *mosq, void *obj, int rc,
     INFO("Disconnected : rc(%d)", rc);
 
     std::lock_guard<std::recursive_mutex> lock_from_here(mq->callback_lock);
+    in_callback = true;
     if (mq->connect_cb)
         mq->connect_cb(AITT_DISCONNECTED);
+    in_callback = false;
 }
 
 void MQ::Connect(const std::string &host, int port, const std::string &username,
@@ -157,6 +170,7 @@ void MQ::Connect(const std::string &host, int port, const std::string &username,
             throw AITTEx(AITTEx::MQTT_ERR);
         }
     }
+
     ret = mosquitto_connect(handle, host.c_str(), port, keep_alive);
     if (ret != MOSQ_ERR_SUCCESS) {
         ERR("mosquitto_connect(%s, %d) Fail(%s)", host.c_str(), port, mosquitto_strerror(ret));
@@ -258,10 +272,10 @@ void MQ::InvokeCallback(const mosquitto_message *msg, const mosquitto_property *
                   true);
         }
     }
-
-    (*subscriber_iterator)
-          ->cb(&mq_msg, msg->topic, msg->payload, msg->payloadlen,
-                (*subscriber_iterator)->user_data);
+    in_callback = true;
+    SubscribeData *cb_info = *subscriber_iterator;
+    cb_info->cb(&mq_msg, msg->topic, msg->payload, msg->payloadlen, cb_info->user_data);
+    in_callback = false;
 }
 
 void MQ::Publish(const std::string &topic, const void *data, const size_t datalen, int qos,

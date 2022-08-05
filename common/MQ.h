@@ -43,7 +43,7 @@ class MQ {
 
     static bool CompareTopic(const std::string &left, const std::string &right);
 
-    void SetConnectionCallback(MQConnectionCallback cb);
+    void SetConnectionCallback(const MQConnectionCallback &cb);
     void Connect(const std::string &host, int port, const std::string &username,
           const std::string &password);
     void SetWillInfo(const std::string &topic, const void *msg, size_t szmsg, int qos, bool retain);
@@ -72,9 +72,11 @@ class MQ {
     static void MessageCallback(mosquitto *, void *, const mosquitto_message *,
           const mosquitto_property *);
     void InvokeCallback(const mosquitto_message *msg, const mosquitto_property *props);
+    void SetConnectionCallbackReal(bool is_set);
 
     static const std::string REPLY_SEQUENCE_NUM_KEY;
     static const std::string REPLY_IS_END_SEQUENCE_KEY;
+    thread_local static bool in_callback;
 
     mosquitto *handle;
     const int keep_alive;

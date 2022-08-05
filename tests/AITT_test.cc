@@ -72,6 +72,36 @@ TEST_F(AITTTest, Positive_Create_Anytime)
     }
 }
 
+TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
+{
+    try {
+        AITT aitt(clientId, LOCAL_IP, true);
+        aitt.SetConnectionCallback(
+              [&](AITT &handle, int status, void *user_data) {
+                  AITTTest *test = static_cast<AITTTest *>(user_data);
+
+                  if (test->ready2) {
+                      EXPECT_EQ(status, AITT_DISCONNECTED);
+                      test->ToggleReady();
+                  } else {
+                      EXPECT_EQ(status, AITT_CONNECTED);
+                      test->ToggleReady2();
+                      handle.Disconnect();
+                  }
+              },
+              this);
+        aitt.Connect();
+
+        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
+
+        IterateEventLoop();
+        ASSERT_TRUE(ready);
+        ASSERT_TRUE(ready2);
+    } catch (std::exception &e) {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+}
+
 TEST_F(AITTTest, UnsetConnectionCallback_P_Anytime)
 {
     try {
@@ -98,36 +128,6 @@ TEST_F(AITTTest, UnsetConnectionCallback_P_Anytime)
         sleep(1);
         ASSERT_FALSE(ready2);
         ASSERT_TRUE(ready);
-    } catch (std::exception &e) {
-        FAIL() << "Unexpected exception: " << e.what();
-    }
-}
-
-TEST_F(AITTTest, SetConnectionCallback_P_Anytime)
-{
-    try {
-        AITT aitt(clientId, LOCAL_IP, true);
-        aitt.SetConnectionCallback(
-              [&](AITT &handle, int status, void *user_data) {
-                  AITTTest *test = static_cast<AITTTest *>(user_data);
-
-                  if (test->ready2) {
-                      EXPECT_EQ(status, AITT_DISCONNECTED);
-                      test->ToggleReady();
-                  } else {
-                      EXPECT_EQ(status, AITT_CONNECTED);
-                      test->ToggleReady2();
-                      handle.Disconnect();
-                  }
-              },
-              this);
-        aitt.Connect();
-
-        g_timeout_add(10, AittTests::ReadyCheck, static_cast<AittTests *>(this));
-
-        IterateEventLoop();
-        ASSERT_TRUE(ready);
-        ASSERT_TRUE(ready2);
     } catch (std::exception &e) {
         FAIL() << "Unexpected exception: " << e.what();
     }

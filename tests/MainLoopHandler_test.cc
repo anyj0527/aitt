@@ -29,7 +29,6 @@ class MainLoopTest : public testing::Test {
   protected:
     void SetUp() override
     {
-        DBG("Called");
         bzero(&addr, sizeof(addr));
 
         server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -50,7 +49,6 @@ class MainLoopTest : public testing::Test {
     {
         my_thread.join();
         close(server_fd);
-        DBG("Called");
     }
 
     int server_fd;
@@ -92,7 +90,6 @@ TEST_F(MainLoopTest, Normal_Anytime)
                     client_fd,
                     [&](MainLoopHandler::MainLoopResult result, int fd,
                           MainLoopHandler::MainLoopData *data) {
-                        DBG("Called");
                         EXPECT_EQ(result, MainLoopHandler::OK);
                         char buf[2] = {0};
                         EXPECT_EQ(read(fd, buf, 1), 1);
@@ -215,7 +212,7 @@ TEST_F(MainLoopTest, AddTimeout_Anytime)
               EXPECT_EQ(data, &test_data);
               clock_gettime(CLOCK_MONOTONIC, &ts_end);
               double diff = 1000.0 * ts_end.tv_sec + 1e-6 * ts_end.tv_nsec
-                    - (1000.0 * ts_start.tv_sec + 1e-6 * ts_start.tv_nsec);
+                            - (1000.0 * ts_start.tv_sec + 1e-6 * ts_start.tv_nsec);
               EXPECT_GE(diff, interval);
               handler.Quit();
               ret = true;
