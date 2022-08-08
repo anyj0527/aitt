@@ -20,6 +20,8 @@
 #endif
 #define API __attribute__((visibility("default")))
 
+#define STR_EQ 0
+
 #define AITT_MANAGED_TOPIC_PREFIX "/v1/custom/aitt/"
 #define DISCOVERY_TOPIC_BASE std::string(AITT_MANAGED_TOPIC_PREFIX "discovery/")
 #define RESPONSE_POSTFIX "_AittRe_"

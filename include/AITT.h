@@ -29,9 +29,6 @@ namespace aitt {
 
 class API AITT {
   public:
-    static constexpr const char *WILL_LEAVE_NETWORK = "disconnected";
-    static constexpr const char *JOIN_NETWORK = "connected";
-
     using SubscribeCallback =
           std::function<void(MSG *msg, const void *data, const size_t datalen, void *user_data)>;
     using ConnectionCallback = std::function<void(AITT &, int, void *user_data)>;

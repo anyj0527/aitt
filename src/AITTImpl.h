@@ -22,10 +22,10 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <tuple>
 #include <utility>
 
 #include "AITT.h"
+#include "AittDiscovery.h"
 #include "MQ.h"
 #include "MainLoopHandler.h"
 #include "TransportModuleLoader.h"
@@ -69,16 +69,12 @@ class AITT::Impl {
     using Blob = std::pair<const void *, int>;
     using SubscribeInfo = std::pair<AittProtocol, void *>;
 
-    static void DiscoveryMessageCallback(MSG *mq, const std::string &topic, const void *msg,
-          const int szmsg, void *cbdata);
-
     void ConnectionCB(ConnectionCallback cb, void *user_data, int status);
     AittSubscribeID SubscribeMQ(SubscribeInfo *info, MainLoopHandler *loop_handle,
           const std::string &topic, const SubscribeCallback &cb, void *cbdata, AittQoS qos);
     void DetachedCB(SubscribeCallback cb, MSG mq_msg, void *data, const size_t datalen,
           void *cbdata, MainLoopHandler::MainLoopResult result, int fd,
           MainLoopHandler::MainLoopData *loop_data);
-    void PublishSubscribeTable(void);
     void *SubscribeTCP(SubscribeInfo *, const std::string &topic, const SubscribeCallback &cb,
           void *cbdata, AittQoS qos);
     void *SubscribeWebRtc(SubscribeInfo *, const std::string &topic, const SubscribeCallback &cb,
@@ -87,15 +83,15 @@ class AITT::Impl {
           bool &is_timeout);
     void PublishWebRtc(const std::string &topic, const void *data, const size_t datalen,
           AittQoS qos, bool retain);
+    void UnsubscribeAll();
 
     AITT &public_api;
     std::string id_;
     std::string mqtt_broker_ip_;
     int mqtt_broker_port_;
     MQ mq;
-    MQ discovery_mq;
+    AittDiscovery discovery;
     unsigned short reply_id;
-    void *discoveryCallbackHandle;
     TransportModuleLoader modules;
     MainLoopHandler main_loop;
     void ThreadMain(void);

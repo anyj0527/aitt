@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Samsung Electronics Co., Ltd All Rights Reserved
+ * Copyright (c) 2021-2022 Samsung Electronics Co., Ltd All Rights Reserved
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,29 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <assert.h>
 
 #include "Module.h"
+#include "aitt_internal_definitions.h"
 
 extern "C" {
 
-// NOTE:
-// name of this function is defined in aitt::TransportModule::MODULE_ENTRY_NAME
-API void *aitt_module_entry(const char *ip)
+// Function name Should be same with aitt::AittTransport::MODULE_ENTRY_NAME
+API void *aitt_module_entry(const char *ip, AittDiscovery &discovery)
 {
-    // NOTE:
-    // The assert() is used to break the build when the MODULE_ENTRY_NAME is changed.
-    // This is only for the debugging purpose
-    assert(!strcmp(__func__, aitt::TransportModule::MODULE_ENTRY_NAME)
+    assert(!strcmp(__func__, aitt::AittTransport::MODULE_ENTRY_NAME)
            && "Entry point name is not matched");
 
     std::string ip_address(ip);
-    Module *module = new Module(ip_address);
+    Module *module = new Module(ip_address, discovery);
 
-    TransportModule *tModule = dynamic_cast<TransportModule *>(module);
+    AittTransport *tModule = dynamic_cast<AittTransport *>(module);
     // NOTE:
-    // validate that the module creates valid object (which inherits TransportModule)
+    // validate that the module creates valid object (which inherits AittTransport)
     assert(tModule && "Transport Module is not created");
 
     return tModule;

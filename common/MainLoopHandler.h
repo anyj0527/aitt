@@ -15,17 +15,16 @@
  */
 #pragma once
 
+#include <AittTypes.h>
 #include <glib.h>
 
 #include <functional>
 #include <map>
 #include <mutex>
 
-#include <AittTypes.h>
-
 namespace aitt {
 
-class API MainLoopHandler {
+class MainLoopHandler {
   public:
     enum MainLoopResult {
         OK,

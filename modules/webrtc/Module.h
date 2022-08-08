@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include <AITT.h>
+#include <AittTransport.h>
 #include <MainLoopHandler.h>
-#include <TransportModule.h>
 
 #include <map>
 #include <memory>
@@ -30,13 +29,13 @@
 #include "PublishStream.h"
 #include "SubscribeStream.h"
 
-using AITT = aitt::AITT;
-using TransportModule = aitt::TransportModule;
+using AittTransport = aitt::AittTransport;
 using MainLoopHandler = aitt::MainLoopHandler;
+using AittDiscovery = aitt::AittDiscovery;
 
-class Module : public TransportModule {
+class Module : public AittTransport {
   public:
-    explicit Module(const std::string &ip);
+    explicit Module(const std::string &ip, AittDiscovery &discovery);
     virtual ~Module(void);
 
     // TODO: How about regarding topic as service name?
@@ -48,30 +47,14 @@ class Module : public TransportModule {
           AittQoS qos = AITT_QOS_AT_MOST_ONCE, bool retain = false) override;
 
     // TODO: How about regarding topic as service name?
-    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+    void *Subscribe(const std::string &topic, const AittTransport::SubscribeCallback &cb,
           void *cbdata = nullptr, AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
 
-    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+    void *Subscribe(const std::string &topic, const AittTransport::SubscribeCallback &cb,
           const void *data, const size_t datalen, void *cbdata = nullptr,
           AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
 
     void *Unsubscribe(void *handle) override;
-
-    // NOTE:
-    // The following callback is going to be called when there is a message of the discovery
-    // information The callback will be called by the AITT implementation
-    void DiscoveryMessageCallback(const std::string &clientId, const std::string &status,
-          const void *msg, const int szmsg) override;
-
-    // NOTE:
-    // AITT implementation could call this method to get the discovery message to broadcast it
-    // through the MQTT broker
-    void GetDiscoveryMessage(const void *&msg, int &szmsg) override;
-    // NOTE:
-    // If we are able to use a string for the protocol,
-    // the module can be developed more freely.
-    // even if modules based on the same protocol, implementations can be different.
-    AittProtocol GetProtocol(void) override;
 
   private:
     Config BuildConfigFromFb(const void *data, const size_t data_size);

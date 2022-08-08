@@ -18,30 +18,32 @@
 #include <AITT.h>
 #include <gtest/gtest.h>
 
-#include "TransportModule.h"
+#include "AittTransport.h"
 #include "aitt_internal.h"
 
 class TransportModuleLoaderTest : public testing::Test {
   public:
-    TransportModuleLoaderTest(void) : loader("127.0.0.1") {}
+    TransportModuleLoaderTest(void) : discovery("test"), loader("127.0.0.1")
+    {
+        loader.Init(discovery);
+    }
 
   protected:
     void SetUp() override {}
-
     void TearDown() override {}
 
-  protected:
+    aitt::AittDiscovery discovery;
     aitt::TransportModuleLoader loader;
 };
 
 TEST_F(TransportModuleLoaderTest, Positive_GetInstance_Anytime)
 {
-    std::shared_ptr<aitt::TransportModule> module = loader.GetInstance(AITT_TYPE_TCP);
+    std::shared_ptr<aitt::AittTransport> module = loader.GetInstance(AITT_TYPE_TCP);
     ASSERT_NE(module, nullptr);
 }
 
 TEST_F(TransportModuleLoaderTest, Negative_GetInstance_Anytime)
 {
-    std::shared_ptr<aitt::TransportModule> module = loader.GetInstance(AITT_TYPE_MQTT);
+    std::shared_ptr<aitt::AittTransport> module = loader.GetInstance(AITT_TYPE_MQTT);
     ASSERT_EQ(module, nullptr);
 }

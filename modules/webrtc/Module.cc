@@ -21,7 +21,7 @@
 #include "Config.h"
 #include "aitt_internal.h"
 
-Module::Module(const std::string &ip)
+Module::Module(const std::string &ip, AittDiscovery &discovery) : AittTransport(discovery)
 {
 }
 
@@ -58,13 +58,13 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
     }
 }
 
-void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+void *Module::Subscribe(const std::string &topic, const AittTransport::SubscribeCallback &cb,
       void *cbdata, AittQoS qos)
 {
     return nullptr;
 }
 
-void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+void *Module::Subscribe(const std::string &topic, const AittTransport::SubscribeCallback &cb,
       const void *data, const size_t datalen, void *cbdata, AittQoS qos)
 {
     std::lock_guard<std::mutex> subscribe_table_lock(subscribe_table_lock_);
@@ -124,20 +124,4 @@ void *Module::Unsubscribe(void *handlePtr)
     }
 
     return ret;
-}
-
-void Module::DiscoveryMessageCallback(const std::string &clientId, const std::string &status,
-      const void *msg, const int szmsg)
-{
-    // TODO
-}
-
-void Module::GetDiscoveryMessage(const void *&msg, int &szmsg)
-{
-    // TODO
-}
-
-AittProtocol Module::GetProtocol(void)
-{
-    return AITT_TYPE_WEBRTC;
 }

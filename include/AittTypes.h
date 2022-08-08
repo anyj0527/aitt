@@ -20,6 +20,7 @@
 typedef void* AittSubscribeID;
 
 enum AittProtocol {
+    AITT_TYPE_UNKNOWN = 0,
     AITT_TYPE_MQTT = (0x1 << 0),    // Publish message through the MQTT
     AITT_TYPE_TCP = (0x1 << 1),     // Publish message to peers using the TCP
     AITT_TYPE_UDP = (0x1 << 2),     // Publish message to peers using the UDP

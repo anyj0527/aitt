@@ -16,6 +16,7 @@
 #include "Module.h"
 
 #include <MQ.h>
+#include <flatbuffers/flexbuffers.h>
 #include <unistd.h>
 
 #include "aitt_internal.h"
@@ -26,13 +27,20 @@
  * TopicString: $TopicLength
  */
 
-Module::Module(const std::string &ip) : discoveryMessage(nullptr), ip(ip)
+Module::Module(const std::string &ip, AittDiscovery &discovery) : AittTransport(discovery), ip(ip)
 {
     aittThread = std::thread(&Module::ThreadMain, this);
+
+    discovery_cb = discovery.AddDiscoveryCB(AITT_TYPE_TCP,
+          std::bind(&Module::DiscoveryMessageCallback, this, std::placeholders::_1,
+                std::placeholders::_2, std::placeholders::_3, std::placeholders::_4));
+    DBG("Discovery Callback : %p, %d", this, discovery_cb);
 }
 
 Module::~Module(void)
 {
+    discovery.RemoveDiscoveryCB(discovery_cb);
+
     while (main_loop.Quit() == false) {
         // wait when called before the thread has completely created.
         usleep(1000);
@@ -40,8 +48,6 @@ Module::~Module(void)
 
     if (aittThread.joinable())
         aittThread.join();
-
-    free(discoveryMessage);
 }
 
 void Module::ThreadMain(void)
@@ -165,7 +171,7 @@ void Module::Publish(const std::string &topic, const void *data, const size_t da
     Publish(topic, data, datalen, std::string(), qos, retain);
 }
 
-void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+void *Module::Subscribe(const std::string &topic, const AittTransport::SubscribeCallback &cb,
       void *cbdata, AittQoS qos)
 {
     std::unique_ptr<TCP::Server> tcpServer;
@@ -185,12 +191,13 @@ void *Module::Subscribe(const std::string &topic, const TransportModule::Subscri
     {
         std::lock_guard<std::mutex> autoLock(subscribeTableLock);
         subscribeTable.insert(SubscribeMap::value_type(topic, std::move(tcpServer)));
+        UpdateDiscoveryMsg();
     }
 
     return reinterpret_cast<void *>(handle);
 }
 
-void *Module::Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
+void *Module::Subscribe(const std::string &topic, const AittTransport::SubscribeCallback &cb,
       const void *data, const size_t datalen, void *cbdata, AittQoS qos)
 {
     return nullptr;
@@ -210,6 +217,8 @@ void *Module::Unsubscribe(void *handlePtr)
             throw std::runtime_error("Service is not registered: " + listen_info->topic);
 
         subscribeTable.erase(it);
+
+        UpdateDiscoveryMsg();
     }
 
     void *cbdata = listen_info->cbdata;
@@ -248,7 +257,8 @@ void Module::DiscoveryMessageCallback(const std::string &clientId, const std::st
     //       },
     //    },
     // }
-    if (!status.compare(aitt::AITT::WILL_LEAVE_NETWORK)) {
+
+    if (!status.compare(AittDiscovery::WILL_LEAVE_NETWORK)) {
         {
             std::lock_guard<std::mutex> autoLock(clientTableLock);
             // Delete from the { clientId : Host } mapping table
@@ -300,7 +310,7 @@ void Module::DiscoveryMessageCallback(const std::string &clientId, const std::st
     }
 }
 
-void Module::GetDiscoveryMessage(const void *&msg, int &szmsg)
+void Module::UpdateDiscoveryMsg()
 {
     flexbuffers::Builder fbb;
     // flexbuffers
@@ -331,19 +341,7 @@ void Module::GetDiscoveryMessage(const void *&msg, int &szmsg)
     fbb.Finish();
 
     auto buf = fbb.GetBuffer();
-
-    free(discoveryMessage);
-
-    szmsg = buf.size();
-    discoveryMessage = malloc(szmsg);
-    memcpy(discoveryMessage, buf.data(), szmsg);
-
-    msg = discoveryMessage;
-}
-
-AittProtocol Module::GetProtocol(void)
-{
-    return AITT_TYPE_TCP;
+    discovery.UpdateDiscoveryMsg(AITT_TYPE_TCP, buf.data(), buf.size());
 }
 
 void Module::ReceiveData(MainLoopHandler::MainLoopResult result, int handle,

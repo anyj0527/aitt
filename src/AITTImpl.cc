@@ -34,9 +34,8 @@ AITT::Impl::Impl(AITT &parent, const std::string &id, const std::string &ipAddr,
       : public_api(parent),
         id_(id),
         mq(id, clearSession),
-        discovery_mq(id + "d", true),
+        discovery(id),
         reply_id(0),
-        discoveryCallbackHandle(0),
         modules(ipAddr)
 {
     // TODO:
@@ -47,12 +46,12 @@ AITT::Impl::Impl(AITT &parent, const std::string &id, const std::string &ipAddr,
 
 AITT::Impl::~Impl(void)
 {
-    if (discoveryCallbackHandle)
+    if (false == mqtt_broker_ip_.empty())
         Disconnect();
 
     while (main_loop.Quit() == false) {
         // wait when called before the thread has completely created.
-        usleep(1000);
+        usleep(1000);  // 1millisecond
     }
 
     if (aittThread.joinable())
@@ -73,11 +72,11 @@ void AITT::Impl::SetWillInfo(const std::string &topic, const void *data, const s
 
 void AITT::Impl::SetConnectionCallback(ConnectionCallback cb, void *user_data)
 {
-    if (cb == nullptr)
-        mq.SetConnectionCallback(nullptr);
-    else
+    if (cb)
         mq.SetConnectionCallback(
               std::bind(&Impl::ConnectionCB, this, cb, user_data, std::placeholders::_1));
+    else
+        mq.SetConnectionCallback(nullptr);
 }
 
 void AITT::Impl::ConnectionCB(ConnectionCallback cb, void *user_data, int status)
@@ -90,56 +89,49 @@ void AITT::Impl::ConnectionCB(ConnectionCallback cb, void *user_data, int status
 void AITT::Impl::Connect(const std::string &host, int port, const std::string &username,
       const std::string &password)
 {
-    discovery_mq.SetWillInfo(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, AITT_QOS_EXACTLY_ONCE, true);
-    discovery_mq.Connect(host, port, username, password);
+    modules.Init(discovery);
+
+    discovery.Start(host, port, username, password);
     mq.Connect(host, port, username, password);
 
     mqtt_broker_ip_ = host;
     mqtt_broker_port_ = port;
-
-    if (discoveryCallbackHandle)
-        discovery_mq.Unsubscribe(discoveryCallbackHandle);
-
-    discoveryCallbackHandle = discovery_mq.Subscribe(DISCOVERY_TOPIC_BASE + "+",
-          AITT::Impl::DiscoveryMessageCallback, static_cast<void *>(this), AITT_QOS_EXACTLY_ONCE);
 }
 
 void AITT::Impl::Disconnect(void)
 {
-    {
-        std::unique_lock<std::mutex> lock(subscribed_list_mutex_);
+    UnsubscribeAll();
 
-        for (auto subscribe_info : subscribed_list) {
-            switch (subscribe_info->first) {
-            case AITT_TYPE_MQTT:
-                mq.Unsubscribe(subscribe_info->second);
-                break;
-            case AITT_TYPE_TCP: {
-                auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
-                tcpModule->Unsubscribe(subscribe_info->second);
-                break;
-            }
-            case AITT_TYPE_WEBRTC: {
-                auto webrtcModule = modules.GetInstance(AITT_TYPE_WEBRTC);
-                webrtcModule->Unsubscribe(subscribe_info->second);
-            }
-            default:
-                ERR("Unknown AittProtocol(%d)", subscribe_info->first);
-                break;
-            }
-
-            delete subscribe_info;
-        }
-        subscribed_list.clear();
-    }
-
-    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, nullptr, 0, AITT_QOS_EXACTLY_ONCE, true);
-    discovery_mq.Unsubscribe(discoveryCallbackHandle);
-    discovery_mq.Disconnect();
-    mq.Disconnect();
-    discoveryCallbackHandle = nullptr;
-    mqtt_broker_ip_ = std::string("");
+    mqtt_broker_ip_.clear();
     mqtt_broker_port_ = -1;
+
+    mq.Disconnect();
+    discovery.Stop();
+}
+
+void AITT::Impl::UnsubscribeAll()
+{
+    std::unique_lock<std::mutex> lock(subscribed_list_mutex_);
+
+    for (auto subscribe_info : subscribed_list) {
+        switch (subscribe_info->first) {
+        case AITT_TYPE_MQTT:
+            mq.Unsubscribe(subscribe_info->second);
+            break;
+
+        case AITT_TYPE_TCP:
+        case AITT_TYPE_WEBRTC:
+            modules.GetInstance(subscribe_info->first)->Unsubscribe(subscribe_info->second);
+            break;
+
+        default:
+            ERR("Unknown AittProtocol(%d)", subscribe_info->first);
+            break;
+        }
+
+        delete subscribe_info;
+    }
+    subscribed_list.clear();
 }
 
 void AITT::Impl::ConfigureTransportModule(const std::string &key, const std::string &value,
@@ -196,7 +188,6 @@ AittSubscribeID AITT::Impl::Subscribe(const std::string &topic, const AITT::Subs
         break;
     case AITT_TYPE_TCP:
         subscribe_handle = SubscribeTCP(info, topic, cb, user_data, qos);
-        PublishSubscribeTable();
         break;
     case AITT_TYPE_WEBRTC:
         subscribe_handle = SubscribeWebRtc(info, topic, cb, user_data, qos);
@@ -284,61 +275,7 @@ void *AITT::Impl::Unsubscribe(AittSubscribeID subscribe_id)
     subscribed_list.erase(it);
     delete info;
 
-    PublishSubscribeTable();
     return user_data;
-}
-
-void AITT::Impl::DiscoveryMessageCallback(MSG *mq, const std::string &topic, const void *msg,
-      const int szmsg, void *user_data)
-{
-    AITT::Impl *impl = static_cast<AITT::Impl *>(user_data);
-
-    size_t end = topic.find("/", DISCOVERY_TOPIC_BASE.length());
-
-    std::string clientId = topic.substr(DISCOVERY_TOPIC_BASE.length(), end);
-    if (clientId.empty()) {
-        ERR("ClientId is empty");
-        return;
-    }
-
-    if (msg == nullptr) {
-        auto tcpModule = impl->modules.GetInstance(AITT_TYPE_TCP);
-        if (tcpModule)
-            tcpModule->DiscoveryMessageCallback(clientId, AITT::WILL_LEAVE_NETWORK, nullptr, 0);
-
-        // TODO:
-        // Invoke more modules for handling the disconnection
-
-        return;
-    }
-
-    auto map = flexbuffers::GetRoot(static_cast<const uint8_t *>(msg), szmsg).AsMap();
-
-    // serviceMessage (flexbuffers)
-    // map {
-    //   "status": "connected",
-    //   "tcp": binaryModuleData,
-    //   "webrtc": binaryModuleData,
-    // }
-    std::string status = map["status"].AsString().c_str();
-
-    auto keys = map.Keys();
-    for (size_t idx = 0; idx < keys.size(); ++idx) {
-        std::string key = keys[idx].AsString().c_str();
-
-        if (!key.compare("status"))
-            continue;
-
-        auto blob = map[key].AsBlob();
-        if (!key.compare("tcp")) {
-            auto tcpModule = impl->modules.GetInstance(AITT_TYPE_TCP);
-            if (tcpModule)
-                tcpModule->DiscoveryMessageCallback(clientId, status, blob.data(), blob.size());
-        }
-
-        // TODO:
-        // Invoke more modules for handling the each protocol information
-    }
 }
 
 int AITT::Impl::PublishWithReply(const std::string &topic, const void *data, const size_t datalen,
@@ -448,39 +385,6 @@ void AITT::Impl::SendReply(MSG *msg, const void *data, const int datalen, bool e
     msg->SetEndSequence(end);
 
     mq.SendReply(msg, data, datalen, AITT_QOS_AT_MOST_ONCE, false);
-}
-
-void AITT::Impl::PublishSubscribeTable(void)
-{
-    flexbuffers::Builder fbb;
-
-    // serviceMessage (flexbuffers)
-    // map {
-    //   "status": "connected",
-    //   "tcp": binaryModuleData,
-    //   "webrtc": binaryModuleData,
-    // }
-    fbb.Map([this, &fbb]() {
-        fbb.String("status", AITT::JOIN_NETWORK);
-
-        auto tcpModule = modules.GetInstance(AITT_TYPE_TCP);
-        if (tcpModule) {
-            const void *msg = nullptr;
-            int szmsg = 0;
-            tcpModule->GetDiscoveryMessage(msg, szmsg);
-            fbb.Key("tcp");
-            fbb.Blob(msg, szmsg);
-        }
-
-        // TODO:
-        // Extract more DiscoveryMessage from modules
-    });
-
-    fbb.Finish();
-
-    auto buf = fbb.GetBuffer();
-    discovery_mq.Publish(DISCOVERY_TOPIC_BASE + id_, buf.data(), buf.size(), AITT_QOS_EXACTLY_ONCE,
-          true);
 }
 
 void *AITT::Impl::SubscribeTCP(SubscribeInfo *handle, const std::string &topic,

@@ -16,7 +16,7 @@
 #pragma once
 
 #include <AITT.h>
-#include <TransportModule.h>
+#include <AittTransport.h>
 
 #include <map>
 #include <memory>
@@ -29,22 +29,19 @@ namespace aitt {
 
 class TransportModuleLoader {
   public:
-    // TODO:
-    // The current version of TransportModuleLoader does not consider how to configure the module in
-    // a common way. Later, the module loader should provide a way to configure a module if a new
-    // type of module is added which requires additional information. Now, we only provide a
-    // device's "ip" address information for configurating a module.
     explicit TransportModuleLoader(const std::string &ip);
-    virtual ~TransportModuleLoader(void);
+    virtual ~TransportModuleLoader() = default;
 
-    std::shared_ptr<TransportModule> GetInstance(AittProtocol protocol);
-
-  private:
-    std::string GetModuleFilename(AittProtocol protocol);
+    void Init(AittDiscovery &discovery);
+    std::shared_ptr<AittTransport> GetInstance(AittProtocol protocol);
 
   private:
     using Handler = std::unique_ptr<void, void (*)(const void *)>;
-    using ModuleMap = std::map<AittProtocol, std::pair<Handler, std::shared_ptr<TransportModule>>>;
+    using ModuleMap = std::map<AittProtocol, std::pair<Handler, std::shared_ptr<AittTransport>>>;
+
+    std::string GetModuleFilename(AittProtocol protocol);
+    int LoadModule(AittProtocol protocol, AittDiscovery &discovery);
+
     ModuleMap module_table;
     std::mutex module_lock;
     std::string ip;

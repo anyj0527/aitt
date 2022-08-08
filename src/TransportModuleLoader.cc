@@ -18,15 +18,12 @@
 
 #include <dlfcn.h>
 
+#include "AITTEx.h"
 #include "aitt_internal.h"
 
 namespace aitt {
 
 TransportModuleLoader::TransportModuleLoader(const std::string &ip) : ip(ip)
-{
-}
-
-TransportModuleLoader::~TransportModuleLoader(void)
 {
 }
 
@@ -43,19 +40,10 @@ std::string TransportModuleLoader::GetModuleFilename(AittProtocol protocol)
     return std::string();
 }
 
-std::shared_ptr<TransportModule> TransportModuleLoader::GetInstance(AittProtocol protocol)
+int TransportModuleLoader::LoadModule(AittProtocol protocol, AittDiscovery &discovery)
 {
-    std::lock_guard<std::mutex> lock_from_here(module_lock);
-
-    auto item = module_table.find(protocol);
-    if (item != module_table.end())
-        return item->second.second;
-
     std::string filename = GetModuleFilename(protocol);
 
-    // NOTE:
-    // Prevent from reference symbols of the loaded module from the subsequently loaded other
-    // modules
     Handler handle(dlopen(filename.c_str(), RTLD_LAZY | RTLD_LOCAL),
           [](const void *handle) -> void {
               if (dlclose(const_cast<void *>(handle)))
@@ -63,29 +51,55 @@ std::shared_ptr<TransportModule> TransportModuleLoader::GetInstance(AittProtocol
           });
     if (handle == nullptr) {
         ERR("dlopen: %s", dlerror());
-        return nullptr;
+        return -1;
     }
 
-    TransportModule::ModuleEntry get_instance_fn = reinterpret_cast<TransportModule::ModuleEntry>(
-          dlsym(handle.get(), TransportModule::MODULE_ENTRY_NAME));
+    AittTransport::ModuleEntry get_instance_fn = reinterpret_cast<AittTransport::ModuleEntry>(
+          dlsym(handle.get(), AittTransport::MODULE_ENTRY_NAME));
     if (get_instance_fn == nullptr) {
         ERR("dlsym: %s", dlerror());
-        return nullptr;
+        return -1;
     }
 
-    std::shared_ptr<TransportModule> instance(
-          static_cast<TransportModule *>(get_instance_fn(ip.c_str())),
-          [](const TransportModule *instance) -> void { delete instance; });
+    std::shared_ptr<AittTransport> instance(
+          static_cast<AittTransport *>(get_instance_fn(ip.c_str(), discovery)),
+          [](const AittTransport *instance) -> void { delete instance; });
     if (instance == nullptr) {
         ERR("Failed to create a new instance");
+        return -1;
+    }
+
+    module_table.emplace(protocol, std::make_pair(std::move(handle), instance));
+
+    return 0;
+}
+
+void TransportModuleLoader::Init(AittDiscovery &discovery)
+{
+    std::lock_guard<std::mutex> lock_from_here(module_lock);
+    if (LoadModule(AITT_TYPE_TCP, discovery) < 0) {
+        ERR("LoadModule(AITT_TYPE_TCP) Fail");
+    }
+
+#ifdef WITH_WEBRTC
+    if (LoadModule(AITT_TYPE_WEBRTC, discovery) < 0) {
+        ERR("LoadModule(AITT_TYPE_WEBRTC) Fail");
+    }
+#endif  // WITH_WEBRTC
+}
+
+std::shared_ptr<AittTransport> TransportModuleLoader::GetInstance(AittProtocol protocol)
+{
+    std::lock_guard<std::mutex> lock_from_here(module_lock);
+
+    auto item = module_table.find(protocol);
+    if (item == module_table.end()) {
+        ERR("Not Initialized");
+        // throw AITTEx(AITTEx::NO_DATA, "Not Initialized");
         return nullptr;
     }
 
-    // NOTE:
-    // Keep the created module instance to manage it as a singleton
-    module_table.insert(
-          ModuleMap::value_type(protocol, std::make_pair(std::move(handle), instance)));
-    return instance;
+    return item->second.second;
 }
 
 }  // namespace aitt

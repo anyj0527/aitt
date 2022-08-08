@@ -15,9 +15,8 @@
  */
 #pragma once
 
+#include <AittTransport.h>
 #include <MainLoopHandler.h>
-#include <TransportModule.h>
-#include <flatbuffers/flexbuffers.h>
 
 #include <map>
 #include <memory>
@@ -27,12 +26,13 @@
 
 #include "TCPServer.h"
 
-using TransportModule = aitt::TransportModule;
+using AittTransport = aitt::AittTransport;
 using MainLoopHandler = aitt::MainLoopHandler;
+using AittDiscovery = aitt::AittDiscovery;
 
-class Module : public TransportModule {
+class Module : public AittTransport {
   public:
-    explicit Module(const std::string &ip);
+    explicit Module(const std::string &ip, AittDiscovery &discovery);
     virtual ~Module(void);
 
     void Publish(const std::string &topic, const void *data, const size_t datalen,
@@ -42,35 +42,18 @@ class Module : public TransportModule {
     void Publish(const std::string &topic, const void *data, const size_t datalen,
           AittQoS qos = AITT_QOS_AT_MOST_ONCE, bool retain = false) override;
 
-    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
-          void *cbdata = nullptr, AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
+    void *Subscribe(const std::string &topic, const SubscribeCallback &cb, void *cbdata = nullptr,
+          AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
 
-    void *Subscribe(const std::string &topic, const TransportModule::SubscribeCallback &cb,
-          const void *data, const size_t datalen, void *cbdata = nullptr,
+    void *Subscribe(const std::string &topic, const SubscribeCallback &cb, const void *data,
+          const size_t datalen, void *cbdata = nullptr,
           AittQoS qos = AITT_QOS_AT_MOST_ONCE) override;
     void *Unsubscribe(void *handle) override;
-
-    // NOTE:
-    // The following callback is going to be called when there is a message of the discovery
-    // information The callback will be called by the AITT implementation
-    void DiscoveryMessageCallback(const std::string &clientId, const std::string &status,
-          const void *msg, const int szmsg) override;
-
-    // NOTE:
-    // AITT implementation could call this method to get the discovery message to broadcast it
-    // through the MQTT broker
-    void GetDiscoveryMessage(const void *&msg, int &szmsg) override;
-
-    // NOTE:
-    // If we are able to use a string for the protocol,
-    // the module can be developed more freely.
-    // even if modules based on the same protocol, implementations can be different.
-    AittProtocol GetProtocol(void) override;
 
   private:
     struct TCPServerData : public MainLoopHandler::MainLoopData {
         Module *impl;
-        TransportModule::SubscribeCallback cb;
+        SubscribeCallback cb;
         void *cbdata;
         std::string topic;
         std::vector<int> client_list;
@@ -125,6 +108,9 @@ class Module : public TransportModule {
 
     static void AcceptConnection(MainLoopHandler::MainLoopResult result, int handle,
           MainLoopHandler::MainLoopData *watchData);
+    void DiscoveryMessageCallback(const std::string &clientId, const std::string &status,
+          const void *msg, const int szmsg);
+    void UpdateDiscoveryMsg();
     static void ReceiveData(MainLoopHandler::MainLoopResult result, int handle,
           MainLoopHandler::MainLoopData *watchData);
     void HandleClientDisconnect(int handle);
@@ -137,8 +123,8 @@ class Module : public TransportModule {
 
     MainLoopHandler main_loop;
     std::thread aittThread;
-    void *discoveryMessage;
     std::string ip;
+    int discovery_cb;
 
     PublishMap publishTable;
     std::mutex publishTableLock;

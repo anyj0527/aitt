@@ -15,23 +15,24 @@
  */
 #pragma once
 
-#include <AITT.h>
+#include <AittDiscovery.h>
+#include <AittTypes.h>
 
 #include <functional>
 #include <string>
 
 namespace aitt {
 
-class TransportModule {
+class AittTransport {
   public:
-    typedef void *(*ModuleEntry)(const char *ip);
+    typedef void *(*ModuleEntry)(const char *ip, AittDiscovery &discovery);
     using SubscribeCallback = std::function<void(const std::string &topic, const void *msg,
           const size_t szmsg, void *cbdata, const std::string &correlation)>;
 
     static constexpr const char *const MODULE_ENTRY_NAME = "aitt_module_entry";
 
-    TransportModule(void) = default;
-    virtual ~TransportModule(void) = default;
+    explicit AittTransport(AittDiscovery &discovery) : discovery(discovery) {}
+    virtual ~AittTransport(void) = default;
 
     virtual void Publish(const std::string &topic, const void *data, const size_t datalen,
           const std::string &correlation, AittQoS qos = AITT_QOS_AT_MOST_ONCE,
@@ -47,22 +48,8 @@ class TransportModule {
 
     virtual void *Unsubscribe(void *handle) = 0;
 
-  public:
-    // NOTE:
-    // The following callback is going to be called when there is a message of the discovery
-    // information The callback will be called by the AITT implementation
-    virtual void DiscoveryMessageCallback(const std::string &clientId, const std::string &status,
-          const void *msg, const int szmsg) = 0;
-
-    // AITT implementation could call this method to get the discovery message to broadcast it
-    // through the MQTT broker
-    virtual void GetDiscoveryMessage(const void *&msg, int &szmsg) = 0;
-
-    // NOTE:
-    // If we are able to use a string for the protocol,
-    // the module can be developed more freely.
-    // even if modules based on the same protocol, implementations can be different.
-    virtual AittProtocol GetProtocol(void) = 0;
+  protected:
+    aitt::AittDiscovery &discovery;
 };
 
 }  // namespace aitt
