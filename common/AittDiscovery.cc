@@ -150,10 +150,6 @@ const char *AittDiscovery::GetProtocolStr(AittProtocol protocol)
         return "mqtt";
     case AITT_TYPE_TCP:
         return "tcp";
-    case AITT_TYPE_UDP:
-        return "udp";
-    case AITT_TYPE_SRTP:
-        return "srtp";
     case AITT_TYPE_WEBRTC:
         return "webrtc";
     default:
@@ -170,12 +166,6 @@ AittProtocol AittDiscovery::GetProtocol(const std::string &protocol_str)
 
     if (STR_EQ == protocol_str.compare(GetProtocolStr(AITT_TYPE_TCP)))
         return AITT_TYPE_TCP;
-
-    if (STR_EQ == protocol_str.compare(GetProtocolStr(AITT_TYPE_UDP)))
-        return AITT_TYPE_UDP;
-
-    if (STR_EQ == protocol_str.compare(GetProtocolStr(AITT_TYPE_SRTP)))
-        return AITT_TYPE_SRTP;
 
     if (STR_EQ == protocol_str.compare(GetProtocolStr(AITT_TYPE_WEBRTC)))
         return AITT_TYPE_WEBRTC;
